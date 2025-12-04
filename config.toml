@@ -54,6 +54,8 @@ comment_scroll_steps = 3
 
 scrape_using_captured_requests = true
 
+gcs_bucket_name="pugsy_ai_crawled_data"
+
 # --- Data and File Path Settings ---
 [data]
 # The main directory where all output files will be stored.
@@ -63,17 +65,17 @@ output_dir = "outputs"
 # urls_filepath = "urls_to_scrape.txt"
 
 
-posts_path = "{output_dir}/{target_profile}/posts_{target_profile}.txt"
-post_entity_path = "{output_dir}/{target_profile}/post_entity_{target_profile}.jsonl"
-profile_path = "{output_dir}/{target_profile}/profile_data_{target_profile}.jsonl"
-metadata_path = "{output_dir}/{target_profile}/metadata_{target_profile}.jsonl"
-skipped_path = "{output_dir}/{target_profile}/skipped_{target_profile}.txt"
-tmp_path = "{output_dir}/{target_profile}/scrape_results_tmp_{target_profile}.jsonl"
-media_path = "{output_dir}/{target_profile}/media_{target_profile}"
+posts_path = "{output_dir}/{date}/{target_profile}/posts_{target_profile}_{datetime}.txt"
+post_entity_path = "{output_dir}/{date}/{target_profile}/post_entity_{target_profile}_{datetime}.jsonl"
+profile_path = "{output_dir}/{date}/{target_profile}/profile_data_{target_profile}_{datetime}.jsonl"
+metadata_path = "{output_dir}/{date}/{target_profile}/metadata_{target_profile}_{datetime}.jsonl"
+skipped_path = "{output_dir}/{date}/{target_profile}/skipped_{target_profile}_{datetime}.txt"
+tmp_path = "{output_dir}/{date}/{target_profile}/scrape_results_tmp_{target_profile}_{datetime}.jsonl"
+media_path = "{output_dir}/{date}/{target_profile}/media_{target_profile}"
 schema_path = "src/igscraper/flatten_schema.yaml"
-models_path = "{output_dir}/{target_profile}/models_{target_profile}.jsonl"
-extracted_data_path = "{output_dir}/{target_profile}/exdata_{target_profile}.jsonl"
-graphql_keys_path = "{output_dir}/{target_profile}/graphql_keys_{target_profile}.jsonl"
+models_path = "{output_dir}/{date}/{target_profile}/models_{target_profile}_{datetime}.jsonl"
+extracted_data_path = "{output_dir}/{date}/{target_profile}/exdata_{target_profile}_{datetime}.jsonl"
+graphql_keys_path = "{output_dir}/{date}/{target_profile}/graphql_keys_{target_profile}_{datetime}.jsonl"
 post_page_data_key = ["xdt_api__v1__media__media_id__comments__connection", "xdt_api__v1__media__media_id__comments__parent_comment_id__child_comments__connection"]
 profile_page_data_key = ["xdt_api__v1__feed__user_timeline_graphql_connection"]
 # graph_path = "{output_dir}/{target_profile}/graphdata_{target_profile}.jsonl"

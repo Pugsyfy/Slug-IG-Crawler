@@ -77,6 +77,8 @@ class MainConfig(BaseSettings):
     # fetch comments
     fetch_comments: bool = True
 
+    gcs_bucket_name: str = "crawled_data"
+
 
     # Credentials can be loaded from env vars (e.g., IGSCRAPER_USERNAME)
     # The alias allows the TOML file to use 'instagram_username'.

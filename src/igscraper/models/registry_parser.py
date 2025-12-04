@@ -869,12 +869,18 @@ class GraphQLModelRegistry:
             parsed_results = [parsed_results]
 
         # Write safely to file
-        with open(path, mode, encoding='utf-8') as f:
-            for entry in parsed_results:
-                safe_entry = make_serializable(entry)
-                f.write(json.dumps(safe_entry, ensure_ascii=False) + "\n")
+        try:
+            with open(path, mode, encoding='utf-8') as f:
+                for entry in parsed_results:
+                    safe_entry = make_serializable(entry)
+                    f.write(json.dumps(safe_entry, ensure_ascii=False) + "\n")
+            logger.info(f"✅ Saved {len(parsed_results)} parsed response(s) to {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save parsed results to {file_path}: {e}")
+            return False
 
-        logger.info(f"✅ Saved {len(parsed_results)} parsed response(s) to {file_path}")
 
     @try_except(log_error=True)
     def get_posts_data(self, config, keys_to_match: List[str], data_type: str = "post"):
@@ -899,8 +905,10 @@ class GraphQLModelRegistry:
             # extracted_data = graphql_data['flattened'].pop()
             # self.save_parsed_results(extracted_data, self.config.data.extracted_data_path)
 
-            self.save_parsed_results(filtered_result, save_path)
+            is_saved = self.save_parsed_results(filtered_result, save_path)
             logger.info(f"Parsed GraphQL data contains {len(filtered_result)} entries.")
+            return is_saved
+        return False
 
 
     def filter_parsed_models_by_keys(self, data: dict | list[dict], required_keys: list[str]) -> dict | list[dict]:

@@ -4,6 +4,7 @@ Main pipeline for the Instagram Profile Scraper.
 This module orchestrates the entire scraping process, from loading the configuration
 to initializing the backend, collecting post URLs, and scraping them in batches.
 """
+import datetime
 import os,sys
 import copy
 import random
@@ -55,7 +56,8 @@ class Pipeline:
         profile_name = profile_target.name
         num_posts_to_scrape = profile_target.num_posts
         results = {"scraped_posts": [], "skipped_posts": []}
-        logger.info(f"--- Starting scrape for single profile: {profile_name} and num_posts: {num_posts_to_scrape} ---")
+        datetime_now = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        logger.info(f"--- Starting scrape for single profile: {profile_name} and num_posts: {num_posts_to_scrape} and datetime: {datetime_now} ---")
 
         try:
             # Create a profile-specific config by copying the base and updating it
@@ -67,7 +69,7 @@ class Pipeline:
             self.master_config._driver = driver_obj_ref
             self.config.main.target_profile = profile_name # Needed for path expansion
             # substitutions = {"target_profile": profile_name}
-            substitutions = {}
+            substitutions = {"date": datetime_now.split('_')[0], "datetime": datetime_now}
             expand_paths(self.config, substitutions)
             # pdb.set_trace()
             logger.info(self.config)

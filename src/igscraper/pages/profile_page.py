@@ -83,7 +83,7 @@ class ProfilePage(BasePage):
         posts = []
         last_height = self.driver.execute_script("return document.body.scrollHeight")
         retries = 0
-
+        is_data_saved = False
         try:
             while len(posts) < limit:
                 try:
@@ -102,7 +102,9 @@ class ProfilePage(BasePage):
                     # scroll_with_mouse(self, steps=4)
                     self.scroller.perform(4)
                     if len(posts) % 12 == 0 and len(posts) != 0:
-                        self.config.main.registry.get_posts_data(self.config, self.config.data.profile_page_data_key, data_type="profile")
+                        is_saved = self.config.main.registry.get_posts_data(self.config, self.config.data.profile_page_data_key, data_type="profile")
+                        if is_saved:
+                            is_data_saved = True
 
                     new_height = self.driver.execute_script("return document.body.scrollHeight")
                     if new_height == last_height:
@@ -120,11 +122,15 @@ class ProfilePage(BasePage):
 
         except Exception as e:
             logger.exception(f"Unexpected error in scroll_and_collect: {e}")
+            return False, []
 
         finally:
-            self.config.main.registry.get_posts_data(self.config, self.config.data.profile_page_data_key, data_type="profile")
+            is_saved = self.config.main.registry.get_posts_data(self.config, self.config.data.profile_page_data_key, data_type="profile")
+            # if is_saved or is_data_saved:
+                # logger.info("Profile page data was saved. Trying to push to gs bucket")
+                # self.backend.on_posts_batch_ready(self.config.data.profile_path)
             logger.info(f"Collected {len(posts)} post URLs.")
-            return posts
+            return (is_data_saved or is_saved), posts
 
     def open_post_element(self, post_element: WebElement) -> None:
         """

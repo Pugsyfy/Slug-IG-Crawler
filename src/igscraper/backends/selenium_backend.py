@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from re import I
 import sys
 import time
 import json
@@ -55,7 +56,11 @@ from igscraper.utils import (
     unmute_if_muted
 )
 from igscraper.mycelery.tasks import write_and_run_full_download_script_
+from igscraper.services.enqueue_client import PostgresConfig, FileEnqueuer
+from igscraper.services.upload_enqueue import GcsUploadConfig, UploadAndEnqueue
+
 import pdb
+
 
 logger = get_logger(__name__)
 
@@ -80,6 +85,10 @@ class SeleniumBackend(Backend):
         self.rate_limit_detected = False
         self.rate_limit_reset_time = 0
         self.rate_limit_attempts = 0 
+        pg_cfg = PostgresConfig.from_env()
+        enqueuer = FileEnqueuer(pg_cfg)
+        gcs_cfg = GcsUploadConfig(bucket_name=self.config.main.gcs_bucket_name)
+        self.uploader = UploadAndEnqueue(gcs_cfg, enqueuer)
         self._state_file = "rate_limit_state.json"  # persistent file
         self._load_rate_limit_state()
 
@@ -276,9 +285,12 @@ class SeleniumBackend(Backend):
         cached = self._load_cached_urls(posts_path)
         if cached is None:
             # Scrape fresh if no cache
-            elements = self.profile_page.scroll_and_collect_(limit)
+            is_data_saved, elements = self.profile_page.scroll_and_collect_(limit)
             urls = [elem for elem in elements]
             self._save_urls(profile, urls, posts_path)
+            if is_data_saved:
+                logger.info("Posts data was saved during collection. Trying to push to gs bucket")
+                self.on_posts_batch_ready(self.config.data.profile_path)
         else:
             urls = cached
 
@@ -534,6 +546,7 @@ class SeleniumBackend(Backend):
         # final save
         if results["scraped_posts"] or results["skipped_posts"]:
             save_scrape_results(results, self.config.data.output_dir, self.config)
+            # self.on_comments_batch_ready(self.config.data.metadata_path)
             clear_tmp_file(tmp_file)
             logger.info("Saved final scrape results.")
 
@@ -669,6 +682,17 @@ class SeleniumBackend(Backend):
         logger.info(f"Executing JS - {js_code} to get post title data for href: {href_string}")
         return self.driver.execute_script(js_code)
 
+    def on_posts_batch_ready(self, local_jsonl_path: str) -> None:
+        gcs_uri = self.uploader.upload_and_enqueue(
+            local_path=local_jsonl_path,
+            kind="post",
+        )
+
+    def on_comments_batch_ready(self, local_jsonl_path: str) -> None:
+        gcs_uri = self.uploader.upload_and_enqueue(
+            local_path=local_jsonl_path,
+            kind="comment",
+        )
 
     def _extract_comments_from_captured_requests(self, driver, config, batch_scrolls: int = 6):
         """
@@ -684,18 +708,21 @@ class SeleniumBackend(Backend):
         """
         container_info = find_comment_container(driver)
         container = container_info.get("selector") if container_info else None
-        self.reply_expander = ReplyExpander.with_container(driver, container, max_clicks=10)
+        self.reply_expander = ReplyExpander.with_container(driver, container, max_clicks=5)
         total_clicked = 0
-        MAX_CLICKS_ALLOWED = 70
+        MAX_CLICKS_ALLOWED = 10
         total_clicked_texts = []
         all_logs = []
         batch_index = 0
         rate_limit_detected = 0
+        is_commentdata_saved = False
         # Initial extraction from embed script
         # this call doesnt get recorded into perf logs, as these first few comments are embedded in the HTML.
         initial_comments_data = extract_script_embedded_comments(self.driver)
         logger.info(f"Initial embedded comments extraction returned {len(initial_comments_data.get('flattened_data', []))} items.")
-        self.config.main.registry.save_parsed_results(initial_comments_data, config.data.post_entity_path)
+        is_saved = self.config.main.registry.save_parsed_results(initial_comments_data, config.data.post_entity_path)
+        if is_saved:
+            is_commentdata_saved = True
         # self.config.main.registry.get_posts_data(self.config, self.config.data.post_page_data_key, data_type="post")
 
         while True:
@@ -762,16 +789,20 @@ class SeleniumBackend(Backend):
             # Refresh post data after every batch
             try:
                 logger.debug("Refreshing post data from captured network requests...")
-                self.config.main.registry.get_posts_data(
+                is_saved = self.config.main.registry.get_posts_data(
                     self.config, self.config.data.post_page_data_key, data_type="post"
                 )
+                if is_saved:
+                    is_commentdata_saved = True
             except Exception as e:
                 logger.warning(f"Failed to refresh post data: {e}")
 
             # Small pause between batches for realism and stability
             time.sleep(random.uniform(1.5, 3.0))
 
-        self.config.main.registry.get_posts_data(self.config, self.config.data.post_page_data_key, data_type="post")
+        is_saved = self.config.main.registry.get_posts_data(self.config, self.config.data.post_page_data_key, data_type="post")
+        if is_saved or is_commentdata_saved:
+            self.on_comments_batch_ready(self.config.data.post_entity_path)
 
     def _handle_comment_load_error_bk(self, driver, container):
         try:
