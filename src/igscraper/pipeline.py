@@ -203,10 +203,12 @@ class Pipeline:
 
         # 5. Read URL file from *expanded* path
         urls_filepath = run_config.data.urls_filepath
+        logger.info(f"[Mode 2] Using URL file: {urls_filepath}")
         try:
             with open(urls_filepath, "r", encoding="utf-8") as f:
                 post_urls = [line.strip() for line in f if line.strip()]
             logger.info(f"Read {len(post_urls)} URLs from {urls_filepath}.")
+            logger.info(f"[Mode 2] URL file contents:\n" + "\n".join(f"  - {url}" for url in post_urls))
         except FileNotFoundError:
             logger.error(f"URL file not found at: {urls_filepath}")
             return {}
@@ -248,6 +250,7 @@ class Pipeline:
             self.backend.start()
             attach_debugger_if_needed()
             self.master_config._driver = self.backend.driver
+            logger.info(f"Master config: {self.master_config}")
             # Check which mode to run in
             if self.master_config.data.urls_filepath and os.path.exists(self.master_config.data.urls_filepath):
                 # Mode 2: Scrape from a URL file
