@@ -184,7 +184,9 @@ The `SeleniumBackend` class implements the `Backend` abstract interface, managin
   - Initializes `ProfilePage` object and `HumanScroller`
 
 - **`stop()`**:
+  - Stops screenshot worker thread
   - Quits WebDriver and closes all browser windows
+  - Finalizes screenshots (if enabled): generates video, uploads to GCS, cleans up local files
 
 - **`_login_with_cookies()`**:
   - Navigates to `https://www.instagram.com/`
@@ -218,6 +220,14 @@ The `SeleniumBackend` class implements the `Backend` abstract interface, managin
     - Comments via `scrape_comments_with_gif()` or `_extract_comments_from_captured_requests()`
   - Handles errors gracefully, returning error dictionaries
   - Ensures tab closure and window switching in `finally` block
+
+- **`_finalize_screenshots()`**:
+  - Shutdown-time artifact finalization (runs after browser shutdown, before process exit)
+  - Generates MP4 video from all `.webp` screenshots in `shot_dir` (2.5 FPS, 640p height)
+  - Uploads video to GCS bucket at `gs://{bucket}/vid_log/{video_name}.mp4`
+  - Deletes all local screenshots and video file after successful upload
+  - Works for both PROFILE (mode 1) and POST (mode 2) jobs
+  - Errors are logged but don't block shutdown
 
 - **`_extract_comments_from_captured_requests(driver, config, batch_scrolls)`**:
   - Uses `ReplyExpander` to expand comment threads
@@ -486,7 +496,13 @@ Standalone script for generating authentication cookies:
 
 12. **Browser Shutdown**
     - `Pipeline.run()` `finally` block calls `backend.stop()`
-    - `SeleniumBackend.stop()` calls `driver.quit()`
+    - `SeleniumBackend.stop()`:
+      - Stops screenshot worker thread
+      - Calls `driver.quit()` to close browser
+      - If `enable_screenshots=True`: calls `_finalize_screenshots()`:
+        - Generates MP4 video from all screenshots (2.5 FPS, 640p height)
+        - Uploads video to GCS at `gs://{bucket}/vid_log/{video_name}.mp4`
+        - Deletes all local screenshots and video file
     - All browser windows closed
 
 ---
@@ -608,8 +624,15 @@ sequenceDiagram
     end
 
     Pipeline->>Backend: stop()
+    Backend->>Backend: Stop screenshot worker
     Backend->>WebDriver: quit()
     WebDriver-->>Backend: Browser closed
+    alt enable_screenshots = true
+        Backend->>Backend: _finalize_screenshots()
+        Backend->>Backend: Generate video from screenshots
+        Backend->>Uploader: Upload video to GCS (vid_log/)
+        Backend->>Backend: Cleanup local screenshots and video
+    end
     Backend-->>Pipeline: Cleanup complete
     Pipeline-->>CLI: Results dictionary
     CLI-->>User: Scraping complete
@@ -631,6 +654,7 @@ target_profiles = [
     { name = "username2", num_posts = 5 }
 ]
 headless = false
+enable_screenshots = false  # Set to true to enable screenshot capture and video generation
 use_docker = false  # Set to true when running in Docker
 batch_size = 2
 fetch_comments = true
@@ -641,9 +665,12 @@ rate_limit_seconds_min = 2
 rate_limit_seconds_max = 4
 max_retries = 3
 save_every = 2
+gcs_bucket_name = "pugsy_ai_crawled_data"  # GCS bucket for video uploads (automatically sanitized if path-like)
+consumer_id = "default_consumer"  # Consumer ID for video naming (automatically sanitized)
 
 [data]
 output_dir = "outputs"
+shot_dir = "{output_dir}/{date}/screens"  # Screenshot directory (used for video generation)
 cookie_file = "src/igscraper/cookies_1234567890.pkl"
 posts_path = "{output_dir}/{date}/{target_profile}/posts_{target_profile}_{datetime}.txt"
 metadata_path = "{output_dir}/{date}/{target_profile}/metadata_{target_profile}.jsonl"
@@ -828,6 +855,45 @@ Completed data files are automatically:
 2. **Uploaded**: Files are uploaded to Google Cloud Storage (GCS)
 3. **Enqueued**: GCS URIs are enqueued to PostgreSQL database for downstream processing
 
+### Screenshot Video Finalization
+
+When `enable_screenshots = true` in configuration, the scraper automatically:
+
+1. **Captures Screenshots**: Takes periodic screenshots (every 7 seconds) during scraping, saved as `.webp` files in `shot_dir`
+2. **Generates Video**: At shutdown, converts all screenshots into a single MP4 video:
+   - **FPS**: 2.5 frames per second
+   - **Resolution**: 640p height (width auto-scaled to preserve aspect ratio)
+   - **Format**: MP4 (H.264 codec)
+   - **Location**: Generated in-place in the screenshot directory
+3. **Uploads to GCS**: Video is uploaded to `gs://{bucket}/vid_log/{video_name}.mp4`
+   - **PROFILE mode**: `profile_{consumer_id}_{profile_name}_{timestamp}.mp4`
+   - **POST mode**: `post_{consumer_id}_{run_name}_{timestamp}.mp4`
+   - **Bucket Name Validation**: The bucket name is automatically sanitized and validated:
+     - Handles path-like bucket names (e.g., `/app/pugsy_ai_crawled_data` → `pugsy_ai_crawled_data`)
+     - Removes `gs://` prefix if present
+     - Validates GCS bucket name format (must start/end with letter/number, 3-63 chars)
+     - Works correctly in both local and Docker environments
+4. **Cleans Up**: After successful upload (or on failure), all local screenshots and the video file are deleted
+
+**Requirements:**
+- At least 2 screenshots must exist (otherwise video generation is skipped)
+- `gcs_bucket_name` must be configured in `config.toml`
+- Video finalization runs automatically during shutdown (no manual intervention needed)
+
+**Configuration:**
+- **Bucket Name**: Can be specified as:
+  - Simple name: `gcs_bucket_name = "pugsy_ai_crawled_data"`
+  - With `gs://` prefix: `gcs_bucket_name = "gs://pugsy_ai_crawled_data"` (prefix is automatically removed)
+  - Path-like values are handled: If the config value looks like a path (e.g., `/app/pugsy_ai_crawled_data`), the basename is extracted automatically
+- **Consumer ID**: Used in video filename for identification
+- **Profile/Run Names**: Automatically sanitized to remove invalid filename characters
+
+**Error Handling:**
+- Video generation failures are logged but don't block shutdown
+- GCS upload failures are logged but cleanup still runs
+- Missing configuration fields result in skipped video generation (with warnings)
+- Invalid bucket names are validated and sanitized automatically, with clear error messages if sanitization fails
+
 ### File Formats
 
 **Metadata JSONL Format:**
@@ -873,6 +939,8 @@ Key external dependencies:
 - **webdriver-manager**: Automatic ChromeDriver management
 - **google-cloud-storage**: GCS upload functionality
 - **psycopg2**: PostgreSQL database connectivity
+- **imageio** and **imageio-ffmpeg**: Video generation from screenshots
+- **Pillow**: Image processing for screenshot resizing
 
 ---
 

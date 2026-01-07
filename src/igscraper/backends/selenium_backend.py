@@ -66,6 +66,12 @@ from igscraper.utils import (
     classify_mp4_files,
     unmute_if_muted
 )
+from igscraper.utils.video_finalizer import (
+    generate_video_from_screenshots,
+    upload_video_to_gcs,
+    cleanup_local_files,
+    generate_video_name,
+)
 from igscraper.mycelery.tasks import write_and_run_full_download_script_
 from igscraper.services.enqueue_client import PostgresConfig, FileEnqueuer
 from igscraper.services.upload_enqueue import GcsUploadConfig, UploadAndEnqueue
@@ -581,12 +587,120 @@ class SeleniumBackend(Backend):
 
 
     def stop(self):
-        """Quits the WebDriver and closes all associated browser windows."""
+        """
+        Quits the WebDriver and closes all associated browser windows.
+        
+        Also finalizes screenshots by generating a video, uploading to GCS, and cleaning up local files.
+        This hook is called during scraper shutdown, after scraping completes and before process exit.
+        """
+        # Stop screenshot worker first
         self.screenshot_stop_event.set()
         if hasattr(self, "screenshot_thread"):
             self.screenshot_thread.join(timeout=2)
+        
+        # Close browser first (after scraping completes)
         if self.driver:
             self.driver.quit()
+        
+        # Finalize screenshots (generate video, upload, cleanup)
+        # This runs after browser shutdown but before process exit
+        # Errors are logged but don't block shutdown
+        if self.config.main.enable_screenshots:
+            self._finalize_screenshots()
+
+    def _finalize_screenshots(self):
+        """
+        Shutdown-time artifact finalization: generate video from screenshots, upload to GCS, cleanup local files.
+        
+        This method:
+        1. Generates an MP4 video from all .webp screenshots in shot_dir
+        2. Uploads the video to the configured GCS bucket
+        3. Deletes all local screenshots and the video file
+        
+        Works for both PROFILE (mode 1) and POST (mode 2) jobs.
+        Failures are logged but don't block shutdown.
+        """
+        try:
+            # Resolve screenshot directory
+            shot_dir = Path(self.config.data.shot_dir).expanduser().resolve()
+            
+            if not shot_dir.exists():
+                logger.info(f"[finalize_screenshots] Screenshot directory does not exist: {shot_dir}. Nothing to finalize.")
+                return
+
+            # Count screenshots
+            webp_files = list(shot_dir.glob("*.webp"))
+            screenshot_count = len(webp_files)
+            logger.info(f"[finalize_screenshots] Found {screenshot_count} screenshots in {shot_dir}")
+
+            if screenshot_count < 2:
+                logger.warning(
+                    f"[finalize_screenshots] Only {screenshot_count} screenshot(s) found, need at least 2. "
+                    "Skipping video generation and cleanup."
+                )
+                return
+
+            # Generate video filename
+            video_name = generate_video_name(
+                mode=self.config.main.mode,
+                consumer_id=self.config.main.consumer_id,
+                profile_name=self.config.main.target_profile if self.config.main.mode == 1 else None,
+                run_name=self.config.main.run_name_for_url_file if self.config.main.mode == 2 else None,
+            )
+
+            if not video_name:
+                logger.error("[finalize_screenshots] Failed to generate video name. Skipping video generation.")
+                return
+
+            # Generate video in the screenshot directory (in-place)
+            video_path = shot_dir / video_name
+            logger.info(f"[finalize_screenshots] Generating video: {video_path}")
+
+            success = generate_video_from_screenshots(
+                screenshot_dir=shot_dir,
+                output_path=video_path,
+                fps=2.5,
+                target_height=640,
+            )
+
+            if not success:
+                logger.error("[finalize_screenshots] Video generation failed. Skipping upload and cleanup.")
+                return
+
+            logger.info(f"[finalize_screenshots] Video created successfully: {video_path}")
+
+            # Upload to GCS
+            bucket_name = self.config.main.gcs_bucket_name
+            gcs_uri = None
+            
+            if not bucket_name:
+                logger.error("[finalize_screenshots] gcs_bucket_name is not configured. Skipping upload.")
+            else:
+                logger.info(f"[finalize_screenshots] Uploading to GCS bucket: {bucket_name!r}")
+                gcs_object_name = f"vid_log/{video_name}"
+                gcs_uri = upload_video_to_gcs(
+                    local_video_path=video_path,
+                    bucket_name=bucket_name,
+                    gcs_object_name=gcs_object_name,
+                )
+
+            if gcs_uri:
+                logger.info(f"[finalize_screenshots] Video uploaded to GCS: {gcs_uri}")
+            else:
+                logger.error("[finalize_screenshots] GCS upload failed, but continuing with cleanup")
+
+            # Cleanup: delete all screenshots and video file
+            # This runs even if upload failed (best-effort cleanup)
+            cleanup_local_files(
+                screenshot_dir=shot_dir,
+                video_path=video_path,
+            )
+
+            logger.info("[finalize_screenshots] Screenshot finalization completed")
+
+        except Exception as e:
+            # Fail-safe: log error but don't block shutdown
+            logger.error(f"[finalize_screenshots] Unexpected error during finalization: {e}", exc_info=True)
 
     def start_screenshot_worker(self):
         if not self.config.main.enable_screenshots:
