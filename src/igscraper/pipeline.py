@@ -47,7 +47,17 @@ class Pipeline:
         self.master_config = load_config(config_path)  # Keep this pristine
         self.config = None
         self.dry_run = dry_run
+        
+        # Store thor_worker_id from config once at initialization
+        self.thor_worker_id = self.master_config.trace.thor_worker_id
+        
         self.backend = SeleniumBackend(self.master_config)
+        
+        # Make thor_worker_id available on backend for SQL inserts and logging
+        self.backend.thor_worker_id = self.thor_worker_id
+        # Also set on FileEnqueuer for SQL inserts
+        self.backend._enqueuer.thor_worker_id = self.thor_worker_id
+        
         self.all_results = {}
         self.registry = GraphQLModelRegistry(MODEL_REGISTRY, self.master_config.data.schema_path)
         self.master_config.main.registry = self.registry
@@ -251,6 +261,8 @@ class Pipeline:
             attach_debugger_if_needed()
             self.master_config._driver = self.backend.driver
             logger.info(f"Master config: {self.master_config}")
+            # Startup log with thor_worker_id
+            logger.info(f"igscraper start | thor_worker_id={self.thor_worker_id}")
             # Check which mode to run in
             if self.master_config.data.urls_filepath and os.path.exists(self.master_config.data.urls_filepath):
                 # Mode 2: Scrape from a URL file
@@ -294,7 +306,7 @@ class Pipeline:
             status: "success" or "error"
             error_type: Exception class name or None
         """
-        consumer_id = getattr(self.config.main, 'consumer_id', None)
+        consumer_id = getattr(self.config.main, 'consumer_id', None) if self.config else None
         log_entry = {
             "event": event,
             "category": category,
@@ -304,7 +316,8 @@ class Pipeline:
             "duration_ms": duration_ms,
             "status": status,
             "error_type": error_type,
-            "consumer_id": consumer_id
+            "consumer_id": consumer_id,
+            "thor_worker_id": self.thor_worker_id
         }
         logger.info(json.dumps(log_entry, ensure_ascii=False))
 

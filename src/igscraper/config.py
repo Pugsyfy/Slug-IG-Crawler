@@ -149,6 +149,10 @@ class CeleryConfig(BaseSettings):
     log_format: Optional[str] = None
     date_format: Optional[str] = None
 
+class TraceConfig(BaseSettings):
+    """Configuration for trace/tracking information."""
+    thor_worker_id: str  # Required, non-empty
+
 class Config(BaseSettings):
     """
     The main configuration model that aggregates all other configuration sections.
@@ -161,6 +165,7 @@ class Config(BaseSettings):
     data: DataConfig
     logging: LoggingConfig
     celery: CeleryConfig
+    trace: TraceConfig
     _driver = PrivateAttr(default=None)
 
 def load_config(path: str) -> Config:
@@ -194,6 +199,22 @@ def load_config(path: str) -> Config:
 
     logger = get_logger("config")
     logger.debug("Configuration loaded successfully")
+    
+    # Validate [trace] section exists and thor_worker_id is present and non-empty
+    if "trace" not in data:
+        error_msg = "Missing required [trace] section in config.toml. thor_worker_id is required."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    trace_data = data.get("trace", {})
+    thor_worker_id = trace_data.get("thor_worker_id")
+    if not thor_worker_id or (isinstance(thor_worker_id, str) and thor_worker_id.strip() == ''):
+        error_msg = (
+            "Missing or empty thor_worker_id in [trace] section of config.toml. "
+            "This field is required and must be non-empty."
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
     
     # Return the config object without path expansion.
     # Path expansion will be handled per-profile in the pipeline.

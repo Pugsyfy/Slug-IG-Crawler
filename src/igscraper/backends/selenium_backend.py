@@ -132,9 +132,14 @@ class SeleniumBackend(Backend):
         self.rate_limit_attempts = 0 
         self.global_seen_comment_ids: set[str] = set()
         self.scroller = None
+        # thor_worker_id will be set by Pipeline after initialization
+        self.thor_worker_id: str | None = None
         pg_cfg = PostgresConfig.from_env()
         logger.info(f"Postgres config: {pg_cfg}")
         enqueuer = FileEnqueuer(pg_cfg)
+        # thor_worker_id will be set by Pipeline after initialization
+        # We'll set it on enqueuer when thor_worker_id is available
+        self._enqueuer = enqueuer
         gcs_cfg = GcsUploadConfig(bucket_name=self.config.main.gcs_bucket_name)
         self.uploader = UploadAndEnqueue(gcs_cfg, enqueuer)
         self._state_file = "rate_limit_state.json"  # persistent file
@@ -1201,7 +1206,8 @@ class SeleniumBackend(Backend):
             "duration_ms": duration_ms,
             "status": status,
             "error_type": error_type,
-            "consumer_id": consumer_id
+            "consumer_id": consumer_id,
+            "thor_worker_id": self.thor_worker_id
         }
         logger.info(json.dumps(log_entry, ensure_ascii=False))
 

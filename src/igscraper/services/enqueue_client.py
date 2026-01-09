@@ -56,7 +56,7 @@ class FileEnqueuer:
     - kind="post"   -> inserts into crawled_posts
     - kind="comment"-> inserts into crawled_comments
 
-    Schema assumed (no shortcode):
+    Schema assumed (includes thor_worker_id):
 
         CREATE TABLE crawled_posts (
             id              serial primary key,
@@ -65,7 +65,8 @@ class FileEnqueuer:
             is_ingested     boolean not null default false,
             ingest_attempts int not null default 0,
             last_ingested_at timestamptz,
-            last_error      text
+            last_error      text,
+            thor_worker_id  text not null
         );
 
         -- same for crawled_comments
@@ -73,6 +74,7 @@ class FileEnqueuer:
 
     def __init__(self, pg_config: PostgresConfig) -> None:
         self._pg_config = pg_config
+        self.thor_worker_id: str | None = None  # Set by backend after initialization
         logger.info("[FileEnqueuer] Initialized with Postgres host: %s, database: %s", pg_config.host, pg_config.database)
 
     def enqueue_file(
@@ -88,14 +90,24 @@ class FileEnqueuer:
         if kind not in ("post", "comment"):
             raise ValueError(f"kind must be 'post' or 'comment', got: {kind}")
 
+        # Safety check: assert thor_worker_id is present and non-empty
+        if not self.thor_worker_id or self.thor_worker_id.strip() == '':
+            error_msg = (
+                f"thor_worker_id is missing or empty in FileEnqueuer. "
+                f"Cannot insert {kind} file '{file_path}' without worker ID. "
+                f"This indicates a configuration error."
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
         table = "crawled_posts" if kind == "post" else "crawled_comments"
         ts = created_at or datetime.now(timezone.utc)
 
         sql = f"""
-            INSERT INTO {table} (file_path, created_at, is_ingested, ingest_attempts)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO {table} (file_path, created_at, is_ingested, ingest_attempts, thor_worker_id)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        params = (file_path, ts, False, 0)
+        params = (file_path, ts, False, 0, self.thor_worker_id)
 
         dsn = self._pg_config.dsn()
 
@@ -103,4 +115,4 @@ class FileEnqueuer:
             with conn.cursor() as cur:
                 cur.execute(sql, params)
             conn.commit()
-        logger.info("[FileEnqueuer] Enqueued file '%s' into table '%s'", file_path, table)
+        logger.info("[FileEnqueuer] Enqueued file '%s' into table '%s' with thor_worker_id='%s'", file_path, table, self.thor_worker_id)
