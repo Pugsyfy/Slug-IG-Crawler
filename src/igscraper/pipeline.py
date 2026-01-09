@@ -48,6 +48,19 @@ class Pipeline:
         self.config = None
         self.dry_run = dry_run
         
+        # Validate [trace].thor_worker_id here (not at config load time)
+        # This allows celery_app to load config without trace section
+        if not hasattr(self.master_config.trace, 'thor_worker_id') or \
+           not self.master_config.trace.thor_worker_id or \
+           self.master_config.trace.thor_worker_id.strip() == '' or \
+           self.master_config.trace.thor_worker_id == "not-validated-yet":
+            error_msg = (
+                "Missing or empty thor_worker_id in [trace] section of config.toml. "
+                "This field is required and must be non-empty for Pipeline execution."
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
         # Store thor_worker_id from config once at initialization
         self.thor_worker_id = self.master_config.trace.thor_worker_id
         

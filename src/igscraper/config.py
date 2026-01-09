@@ -200,21 +200,11 @@ def load_config(path: str) -> Config:
     logger = get_logger("config")
     logger.debug("Configuration loaded successfully")
     
-    # Validate [trace] section exists and thor_worker_id is present and non-empty
+    # Note: [trace] validation is deferred to Pipeline.__init__ to avoid
+    # import-time failures when celery_app loads config (which doesn't need trace)
+    # If trace section is missing, add a dummy one to satisfy Pydantic schema
     if "trace" not in data:
-        error_msg = "Missing required [trace] section in config.toml. thor_worker_id is required."
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-    
-    trace_data = data.get("trace", {})
-    thor_worker_id = trace_data.get("thor_worker_id")
-    if not thor_worker_id or (isinstance(thor_worker_id, str) and thor_worker_id.strip() == ''):
-        error_msg = (
-            "Missing or empty thor_worker_id in [trace] section of config.toml. "
-            "This field is required and must be non-empty."
-        )
-        logger.error(error_msg)
-        raise ValueError(error_msg)
+        data["trace"] = {"thor_worker_id": "not-validated-yet"}
     
     # Return the config object without path expansion.
     # Path expansion will be handled per-profile in the pipeline.
