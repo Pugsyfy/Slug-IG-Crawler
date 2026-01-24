@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 import psycopg
-import logging
 from dotenv import load_dotenv
+from igscraper.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 load_dotenv(dotenv_path=os.environ.get("ENV_FILE", ".env"), override=False)
 
 def log_pg_env():
@@ -39,6 +39,13 @@ class PostgresConfig:
             user=os.environ.get("PUGSY_PG_USER", "postgres"),
             password=os.environ.get("PUGSY_PG_PASSWORD", ""),
             database=os.environ.get("PUGSY_PG_DATABASE", ""),
+        )
+
+    def __repr__(self) -> str:
+        """Safe string representation that redacts password."""
+        return (
+            f"PostgresConfig(host='{self.host}', port={self.port}, "
+            f"user='{self.user}', password='***', database='{self.database}')"
         )
 
     def dsn(self) -> str:
@@ -75,7 +82,7 @@ class FileEnqueuer:
     def __init__(self, pg_config: PostgresConfig) -> None:
         self._pg_config = pg_config
         self.thor_worker_id: str | None = None  # Set by backend after initialization
-        logger.info("[FileEnqueuer] Initialized with Postgres host: %s, database: %s", pg_config.host, pg_config.database)
+        logger.debug("[FileEnqueuer] Initialized with Postgres host: %s, database: %s", pg_config.host, pg_config.database)
 
     def enqueue_file(
         self,

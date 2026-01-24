@@ -29,7 +29,7 @@ class GraphQLModelRegistry:
 #     # "xdt_api__v1__media__media_id__comments__parent_comment_id__child_comments__connection",
 # }
 
-        logger.info("Initialized GraphQLModelRegistry")
+        logger.debug("Initialized GraphQLModelRegistry")
 
     # ----------------------------
     # Model lookup helpers
@@ -236,7 +236,7 @@ class GraphQLModelRegistry:
             request_id = item.get("requestId")
             raw_response = item.get("response")
 
-            logger.info(f"[{idx+1}/{len(extracted)}] Processing requestId={request_id}, url={url}")
+            logger.debug(f"[{idx+1}/{len(extracted)}] Processing requestId={request_id}, url={url}")
 
             if not raw_response:
                 logger.warning(f"No raw_response for requestId={request_id}, url={url}")
@@ -354,12 +354,12 @@ class GraphQLModelRegistry:
                 "current_url": driver.current_url
             })
 
-            logger.info(
+            logger.debug(
                 f"Finished requestId={request_id} "
                 f"({len(flattened_data_all)} data rows, {len(flattened_ext_all)} extension rows)"
             )
 
-        logger.info("Completed parse_responses for all inputs")
+        logger.debug("Completed parse_responses for all inputs")
         return parsed_results
 
     # Schema walker / flattener
@@ -831,7 +831,7 @@ class GraphQLModelRegistry:
             for entry in parsed_results:
                 safe_entry = make_serializable(entry)
                 f.write(json.dumps(safe_entry, ensure_ascii=False) + "\n")
-        logger.info(f"✅ Saved {len(parsed_results)} parsed responses to {file_path}")
+        logger.debug(f"✅ Saved {len(parsed_results)} parsed responses to {file_path}")
 
     def save_parsed_results(self, parsed_results: List[Dict]| Dict, file_path: str, mode='a'):
         """
@@ -879,7 +879,7 @@ class GraphQLModelRegistry:
                 for entry in parsed_results:
                     safe_entry = make_serializable(entry)
                     f.write(json.dumps(safe_entry, ensure_ascii=False) + "\n")
-            logger.info(f"✅ Saved {len(parsed_results)} parsed response(s) to {file_path}")
+            logger.debug(f"✅ Saved {len(parsed_results)} parsed response(s) to {file_path}")
             return True
             
         except Exception as e:
@@ -901,7 +901,7 @@ class GraphQLModelRegistry:
             logger.error(f"Unknown data_type: {data_type}. Must be 'post' or 'profile'.")
             raise ValueError(f"Unknown data_type: {data_type}")
         if graphql_keys:
-            logger.info(f"Extracted {len(graphql_keys)} unique GraphQL keys from network requests.")
+            logger.debug(f"Extracted {len(graphql_keys)} unique GraphQL keys from network requests.")
             # self.registry.debug_schema_paths()
             graphql_data = self.parse_responses(graphql_keys,selected_data_keys=keys_to_match, driver=config._driver)
 
@@ -925,7 +925,7 @@ class GraphQLModelRegistry:
             # self.save_parsed_results(extracted_data, self.config.data.extracted_data_path)
 
             is_saved = self.save_parsed_results(filtered_result, save_path)
-            logger.info(f"Parsed GraphQL data contains {len(filtered_result)} entries.")
+            logger.debug(f"Parsed GraphQL data contains {len(filtered_result)} entries.")
             return is_saved
         return False
 

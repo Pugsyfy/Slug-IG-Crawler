@@ -1,8 +1,9 @@
 # sorter.py
 from __future__ import annotations
-import json, time, logging, tempfile
+import json, time, tempfile
 from pathlib import Path
 from typing import List, Sequence, Dict, Any, Optional
+from igscraper.logger import get_logger
 
 try:
     import json5
@@ -10,7 +11,7 @@ try:
 except Exception:
     _HAS_JSON5 = False
 
-logger_default = logging.getLogger(__name__)
+logger_default = get_logger(__name__)
 
 
 def _safe_load(text: str, use_json5: Optional[bool]):
@@ -163,7 +164,7 @@ def sort_jsonl_folder(
             rec["records"] = len(records)
             summary["sorted"] += 1
             summary["files"].append(rec)
-            logger.info("Sorted %s (%d records)", path, len(records))
+            logger.debug("Sorted %s (%d records)", path, len(records))
 
         except Exception as e:
             rec["status"] = "failed"

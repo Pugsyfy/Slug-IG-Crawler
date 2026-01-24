@@ -135,7 +135,7 @@ class SeleniumBackend(Backend):
         # thor_worker_id will be set by Pipeline after initialization
         self.thor_worker_id: str | None = None
         pg_cfg = PostgresConfig.from_env()
-        logger.info(f"Postgres config: {pg_cfg}")
+        logger.debug(f"Postgres config: {pg_cfg}")
         enqueuer = FileEnqueuer(pg_cfg)
         # thor_worker_id will be set by Pipeline after initialization
         # We'll set it on enqueuer when thor_worker_id is available
@@ -725,7 +725,7 @@ class SeleniumBackend(Backend):
         )
         self.screenshot_thread.start()
 
-        logger.info("Screenshot worker started (7s interval)")
+        logger.debug("Screenshot worker started (7s interval)")
 
 
     def open_profile(self, profile_handle: str) -> None:
@@ -750,7 +750,7 @@ class SeleniumBackend(Backend):
         if os.path.exists(file_path):
             with open(file_path, "r", encoding="utf-8") as f:
                 urls = json.load(f)
-            logger.info(f"Loaded {len(urls)} post URLs from {file_path}.")
+            logger.debug(f"Loaded {len(urls)} post URLs from {file_path}.")
             return urls
         return None
 
@@ -766,7 +766,7 @@ class SeleniumBackend(Backend):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(urls, f, ensure_ascii=False, indent=2)
-        logger.info(f"Saved {len(urls)} post URLs to {file_path}.")
+        logger.debug(f"Saved {len(urls)} post URLs to {file_path}.")
 
     def _load_processed_urls(self, file_path: str) -> set[str]:
         """
@@ -791,7 +791,7 @@ class SeleniumBackend(Backend):
                             processed.add(record["post_url"])
                     except json.JSONDecodeError:
                         continue
-            logger.info(f"Loaded {len(processed)} processed post URLs from {file_path}.")
+            logger.debug(f"Loaded {len(processed)} processed post URLs from {file_path}.")
         return processed
 
     def get_post_elements(self, limit: int) -> Iterator[Any]:
@@ -820,7 +820,7 @@ class SeleniumBackend(Backend):
             urls = [elem for elem in elements]
             self._save_urls(profile, urls, posts_path)
             if is_data_saved:
-                logger.info("Posts data was saved during collection. Trying to push to gs bucket")
+                logger.debug("Posts data was saved during collection. Trying to push to gs bucket")
                 self.on_posts_batch_ready(self.config.data.profile_path)
         else:
             urls = cached
@@ -830,7 +830,7 @@ class SeleniumBackend(Backend):
         processed = self._load_processed_urls(processed_data_path)
         urls = [u for u in urls if u not in processed]
 
-        logger.info(f"Returning {len(urls)} post URLs after filtering out {len(processed)} processed ones.")
+        logger.debug(f"Returning {len(urls)} post URLs after filtering out {len(processed)} processed ones.")
         return urls
 
 
@@ -903,7 +903,7 @@ class SeleniumBackend(Backend):
             # unmute_if_muted(self.driver, 0.2)
 
             # del self.driver.requests  # Clear any previous requests to avoid memory bloat
-            logger.info(f"Switched to tab {tab_handle} for post {post_index} ({post_url}). Refreshing page.")
+            logger.debug(f"Switched to tab {tab_handle} for post {post_index} ({post_url}). Refreshing page.")
             # self.driver.refresh()
             
             # Active time: tab switch
@@ -933,10 +933,10 @@ class SeleniumBackend(Backend):
             # If using previously-captured requests to gather most media/metadata,
             # we only need to extract comments here. Skip other extraction blocks.
             if self.config.main.scrape_using_captured_requests:
-                logger.info(f"scrape_using_captured_requests=True — extracting comments only for {post_url}")
+                logger.debug(f"scrape_using_captured_requests=True — extracting comments only for {post_url}")
                 try:
                     post_data["post_comments_gif"] = self._extract_comments_from_captured_requests(self.driver, self.config) or []
-                    logger.info(f"Captured-requests comment extraction returned {len(post_data['post_comments_gif'])} items for {post_url}")
+                    logger.debug(f"Captured-requests comment extraction returned {len(post_data['post_comments_gif'])} items for {post_url}")
                     # Active time: comment extraction
                     active_time_end = time.perf_counter()
                     active_time_accumulated += (active_time_end - active_time_start)
@@ -1070,7 +1070,8 @@ class SeleniumBackend(Backend):
         batch_size=3,
         save_every=5,
         tab_open_retries=4,
-        debug=False
+        debug=False,
+        url_metadata=None
     ):
         """
         Scrapes a list of post URLs in batches, saving results periodically.
@@ -1088,6 +1089,9 @@ class SeleniumBackend(Backend):
             tab_open_retries (int): The number of retries for detecting a new tab.
             debug (bool): If True, scraped tabs will not be closed, which is useful
                           for debugging.
+            url_metadata (dict, optional): Per-URL metadata overrides. Format:
+                          {url: {"max_comments": N}}. Allows per-post control
+                          of scraping parameters (e.g., max_comments override).
 
         Returns:
             A dictionary containing lists of 'scraped_posts' and 'skipped_posts'.
@@ -1097,6 +1101,9 @@ class SeleniumBackend(Backend):
 
         main_handle = self.driver.current_window_handle
         tmp_file = self.config.data.tmp_path
+        
+        # Normalize url_metadata to empty dict if None (defensive)
+        url_metadata = url_metadata or {}
 
         # main loop over batches
         for batch_start in range(0, len(post_elements), batch_size):
@@ -1126,7 +1133,7 @@ class SeleniumBackend(Backend):
                         # optionally give the new tab a moment to start loading
                         time.sleep(random.uniform(0.8, 1.5))
                         opened.append((i, href, new_handle))
-                        logger.info(f"Opened post {i+1} in new tab: {href} -> handle {new_handle}")
+                        logger.debug(f"Opened post {i+1} in new tab: {href} -> handle {new_handle}")
                     except Exception as e:
                         logger.error(f"Failed to open new tab for post {i+1}: {e}")
                         results["skipped_posts"].append({
@@ -1145,7 +1152,43 @@ class SeleniumBackend(Backend):
             # --- scrape each opened tab, one-by-one, ensuring closure ---
             for post_index, post_url, tab_handle in opened:
                 time.sleep(random.uniform(3, 10))
-                post_data, error_data = self._scrape_and_close_tab(post_index, post_url, tab_handle, main_handle, debug)
+                
+                # SURGICAL OVERRIDE: Apply per-post max_comments if specified in url_metadata
+                # Store original value to ensure proper restoration (even if exception occurs)
+                original_max_comments = self.config.main.max_comments
+                override_applied = False
+                
+                try:
+                    # Check if this URL has metadata override
+                    if url_metadata and post_url in url_metadata:
+                        metadata = url_metadata[post_url]
+                        override_max_comments = metadata.get("max_comments")
+                        
+                        if override_max_comments is not None:
+                            # Validate override value (defensive check)
+                            if isinstance(override_max_comments, int) and override_max_comments > 0:
+                                logger.info(
+                                    f"[Per-post override] {post_url}: "
+                                    f"max_comments {original_max_comments} → {override_max_comments}"
+                                )
+                                self.config.main.max_comments = override_max_comments
+                                override_applied = True
+                            else:
+                                logger.warning(
+                                    f"[Per-post override] {post_url}: Invalid max_comments={override_max_comments}. "
+                                    f"Using default: {original_max_comments}"
+                                )
+                    
+                    # Scrape the post (existing code path)
+                    post_data, error_data = self._scrape_and_close_tab(post_index, post_url, tab_handle, main_handle, debug)
+                    
+                finally:
+                    # CRITICAL: Always restore original max_comments, even if exception occurs
+                    if override_applied:
+                        self.config.main.max_comments = original_max_comments
+                        logger.debug(
+                            f"[Per-post override] Restored max_comments to {original_max_comments}"
+                        )
 
                 if post_data is None and error_data is None:
                     # This indicates no browser windows are left.
@@ -1431,7 +1474,7 @@ class SeleniumBackend(Backend):
         # Initial extraction from embed script
         # this call doesnt get recorded into perf logs, as these first few comments are embedded in the HTML.
         initial_comments_data = extract_script_embedded_comments(self.driver)
-        logger.info(f"Initial embedded comments extraction returned {len(initial_comments_data.get('flattened_data', []))} items.")
+        logger.debug(f"Initial embedded comments extraction returned {len(initial_comments_data.get('flattened_data', []))} items.")
         is_saved = self.config.main.registry.save_parsed_results(initial_comments_data, config.data.post_entity_path)
         if is_saved:
             is_commentdata_saved = True
@@ -1690,7 +1733,7 @@ class SeleniumBackend(Backend):
                 self._save_rate_limit_state()
                 logger.info("Loaded expired rate limit state — reset to defaults.")
             else:
-                logger.info("Loaded persisted rate limit state from disk.")
+                logger.debug("Loaded persisted rate limit state from disk.")
 
         except Exception as e:
             logger.warning(f"Failed to load rate limit state: {e}")
@@ -1776,7 +1819,7 @@ class SeleniumBackend(Backend):
         out_dir = Path(self.config.data.shot_dir).expanduser().resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"[screenshot] resolved out_dir = {out_dir}")
+        logger.debug(f"[screenshot] resolved out_dir = {out_dir}")
 
         while not self.screenshot_stop_event.is_set():
             try:
@@ -1796,7 +1839,7 @@ class SeleniumBackend(Backend):
                     method=2         # slowest = best compression
                 )
 
-                logger.info(f"[screenshot] saved path={path}")
+                logger.debug(f"[screenshot] saved path={path}")
 
             except Exception as e:
                 logger.debug(f"[screenshot] worker error: {e}")
