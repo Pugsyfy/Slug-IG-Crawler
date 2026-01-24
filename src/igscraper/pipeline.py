@@ -19,7 +19,7 @@ from .logger import get_logger
 from pathlib import Path
 from .models.registry_parser import GraphQLModelRegistry
 from .models.common import MODEL_REGISTRY
-from .utils import capture_instagram_requests
+from .utils import capture_instagram_requests, extract_instagram_shortcode
 import pdb 
 logger = get_logger(__name__)
 
@@ -240,7 +240,7 @@ class Pipeline:
             
             # Parse URLs with optional metadata (format: URL|max_comments=N)
             post_urls = []
-            url_metadata = {}  # {url: {"max_comments": N}}
+            url_metadata = {}  # {shortcode: {"max_comments": N}} - keyed by shortcode, not URL
             
             for line_num, line in enumerate(raw_lines, start=1):
                 if "|" in line:
@@ -248,6 +248,16 @@ class Pipeline:
                     parts = line.split("|", 1)
                     url = parts[0].strip()
                     metadata_str = parts[1].strip()
+                    
+                    # Extract shortcode from URL for metadata key
+                    shortcode = extract_instagram_shortcode(url)
+                    if not shortcode:
+                        logger.warning(
+                            f"[Mode 2] Line {line_num}: Could not extract shortcode from URL '{url}'. "
+                            f"Skipping metadata for this URL."
+                        )
+                        post_urls.append(url)
+                        continue
                     
                     # Parse metadata (simple key=value format)
                     metadata = {}
@@ -282,9 +292,9 @@ class Pipeline:
                     
                     post_urls.append(url)
                     if metadata:
-                        url_metadata[url] = metadata
+                        url_metadata[shortcode] = metadata
                         logger.debug(
-                            f"[Mode 2] Line {line_num}: {url} with metadata {metadata}"
+                            f"[Mode 2] Line {line_num}: {url} (shortcode: {shortcode}) with metadata {metadata}"
                         )
                 else:
                     # Legacy format: plain URL (backward compatible)

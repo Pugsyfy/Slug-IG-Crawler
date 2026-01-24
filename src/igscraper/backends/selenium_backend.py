@@ -1159,25 +1159,31 @@ class SeleniumBackend(Backend):
                 override_applied = False
                 
                 try:
-                    # Check if this URL has metadata override
-                    if url_metadata and post_url in url_metadata:
-                        metadata = url_metadata[post_url]
+                    # Extract shortcode from URL and check if it has metadata override
+                    # url_metadata is now keyed by shortcode, not URL
+                    post_shortcode = extract_instagram_shortcode(post_url)
+                    if url_metadata and post_shortcode and post_shortcode in url_metadata:
+                        metadata = url_metadata[post_shortcode]
                         override_max_comments = metadata.get("max_comments")
                         
                         if override_max_comments is not None:
                             # Validate override value (defensive check)
                             if isinstance(override_max_comments, int) and override_max_comments > 0:
                                 logger.info(
-                                    f"[Per-post override] {post_url}: "
+                                    f"[Per-post override] {post_url} (shortcode: {post_shortcode}): "
                                     f"max_comments {original_max_comments} → {override_max_comments}"
                                 )
                                 self.config.main.max_comments = override_max_comments
                                 override_applied = True
                             else:
                                 logger.warning(
-                                    f"[Per-post override] {post_url}: Invalid max_comments={override_max_comments}. "
+                                    f"[Per-post override] {post_url} (shortcode: {post_shortcode}): Invalid max_comments={override_max_comments}. "
                                     f"Using default: {original_max_comments}"
                                 )
+                    elif url_metadata and post_shortcode:
+                        logger.debug(
+                            f"[Per-post override] No metadata found for shortcode: {post_shortcode} (URL: {post_url})"
+                        )
                     
                     # Scrape the post (existing code path)
                     post_data, error_data = self._scrape_and_close_tab(post_index, post_url, tab_handle, main_handle, debug)
