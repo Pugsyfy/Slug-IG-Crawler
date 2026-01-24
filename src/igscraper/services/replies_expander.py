@@ -1,11 +1,13 @@
 import json
-import logging
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 import time
 import random
-from datetime import datetime,timezone
+from datetime import datetime, timezone
+from typing import Optional
+import logging
+from igscraper.logger import get_logger
 
 class ReplyExpander:
     """
@@ -22,7 +24,7 @@ class ReplyExpander:
         base_pause_ms: int = 350,
         long_pause_chance: float = 0.25,
         settle_wait_ms: int = 1000,
-        logger: logging.Logger | None = None,
+        logger: Optional[logging.Logger] = None,
         is_headless: bool = False,
     ):
         self.driver = driver
@@ -32,7 +34,8 @@ class ReplyExpander:
         self.base_pause_ms = base_pause_ms
         self.long_pause_chance = long_pause_chance
         self.settle_wait_ms = settle_wait_ms
-        self.log = logger or logging.getLogger(__name__)
+        # Use provided logger or fallback to get_logger() which respects config.toml
+        self.log = logger or get_logger(__name__)
         self.is_headless = is_headless
 
     @classmethod

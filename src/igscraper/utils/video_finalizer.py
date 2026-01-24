@@ -4,11 +4,11 @@ Video finalization utility for converting screenshots to MP4 videos.
 This module provides a pure function for generating videos from screenshot sequences,
 designed to be unit-testable and non-blocking.
 """
-import logging
 import re
 from pathlib import Path
 from typing import Optional
 from datetime import datetime, timezone
+from igscraper.logger import get_logger
 
 try:
     import imageio
@@ -17,7 +17,7 @@ except ImportError:
     imageio = None
     imageio_ffmpeg = None
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def generate_video_from_screenshots(

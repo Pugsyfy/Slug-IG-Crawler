@@ -15,7 +15,7 @@ target_profiles = [
   #{ name = "valerialipovetsky",   num_posts = 20 },
   #{ name = "everyday_abby",       num_posts = 20 },
   #{ name = "memezar",           num_posts = 40 },
-  { name = "jeffnippard",     num_posts = 120 },
+  { name = "jeffnippard",     num_posts = 10 },
   #{ name = "komalpandeyofficial", num_posts = 20 },
   #{ name = "mrunu",               num_posts = 20 },
   #{ name = "iam_neetubisht_",     num_posts = 20 },
@@ -58,9 +58,9 @@ target_profiles = [
 #run_name_for_url_file = "test_comments_fetch_url" # Used for output folder name in URL file mode
 
 # comment mode
-fetch_comments = false
-fetch_replies = false
-max_comments = 10
+fetch_comments = true
+fetch_replies = true
+max_comments = 40
 
 # If true, the browser will run in the background without a visible window.
 # Recommended: true for performance, false for debugging.
@@ -138,7 +138,7 @@ cookie_file = "/Users/shang/my_work/ig_profile_scraper/src/igscraper/cookies/shi
 [logging]
 # The logging level.
 # Recommended: "INFO" for normal runs, "DEBUG" for troubleshooting.
-level = "DEBUG"
+level = "INFO"
 log_dir = "outputs/logs"
 log_format = "%(asctime)s [%(levelname)s/%(processName)s] %(name)s: %(message)s"
 date_format = "%Y-%m-%d %H:%M:%S"

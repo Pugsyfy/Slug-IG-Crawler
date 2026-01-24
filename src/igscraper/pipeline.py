@@ -24,7 +24,7 @@ import pdb
 logger = get_logger(__name__)
 
 load_dotenv()
-logger.info(f"THOR_WORKER_ID: {os.getenv('THOR_WORKER_ID')}")
+logger.debug(f"THOR_WORKER_ID: {os.getenv('THOR_WORKER_ID')}")
 
 def attach_debugger_if_needed():
     if os.environ.get("DEBUG_ATTACH") == "1":
@@ -94,7 +94,7 @@ class Pipeline:
         num_posts_to_scrape = profile_target.num_posts
         results = {"scraped_posts": [], "skipped_posts": []}
         datetime_now = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-        logger.info(f"--- Starting scrape for single profile: {profile_name} and num_posts: {num_posts_to_scrape} and datetime: {datetime_now} ---")
+        logger.debug(f"Starting scrape for single profile: {profile_name} (num_posts: {num_posts_to_scrape}, datetime: {datetime_now})")
 
         # Timing: Start total time (wall clock)
         total_time_start = time.perf_counter()
@@ -116,7 +116,7 @@ class Pipeline:
             substitutions = {"date": datetime_now.split('_')[0], "datetime": datetime_now}
             expand_paths(self.config, substitutions)
             # pdb.set_trace()
-            logger.info(self.config)
+            logger.debug(f"Profile config: {self.config}")
             # Update the backend's config and expand paths for the current profile
             self.backend.config = self.config
             self.backend.profile_page.config = self.config
@@ -130,7 +130,7 @@ class Pipeline:
             
             path = Path(self.config.data.output_dir) / profile_name
             path.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Path created - {path}")
+            logger.debug(f"Path created: {path}")
             
             # Active time: get_post_elements
             active_time_end = time.perf_counter()
@@ -168,7 +168,7 @@ class Pipeline:
             # Final active time accumulation
             active_time_end = time.perf_counter()
             active_time_accumulated += (active_time_end - active_time_start)
-            logger.info(f"Pipeline completed for profile {profile_name}.")
+            logger.debug(f"Pipeline completed for profile {profile_name}")
 
         except Exception as e:
             status = "error"
@@ -229,16 +229,77 @@ class Pipeline:
         self.backend.profile_page.config = run_config
         self.backend.start_screenshot_worker()
 
-        # 5. Read URL file from *expanded* path
+        # 5. Read URL file from *expanded* path with optional per-URL metadata
         urls_filepath = run_config.data.urls_filepath
-        logger.info(f"[Mode 2] Using URL file: {urls_filepath}")
+        logger.debug(f"[Mode 2] Using URL file: {urls_filepath}")
         try:
             with open(urls_filepath, "r", encoding="utf-8") as f:
-                post_urls = [line.strip() for line in f if line.strip()]
+                raw_lines = [line.strip() for line in f if line.strip()]
+            
+            # Parse URLs with optional metadata (format: URL|max_comments=N)
+            post_urls = []
+            url_metadata = {}  # {url: {"max_comments": N}}
+            
+            for line_num, line in enumerate(raw_lines, start=1):
+                if "|" in line:
+                    # Extended format: URL|key=value [key=value ...]
+                    parts = line.split("|", 1)
+                    url = parts[0].strip()
+                    metadata_str = parts[1].strip()
+                    
+                    # Parse metadata (simple key=value format)
+                    metadata = {}
+                    try:
+                        for kv in metadata_str.split():
+                            if "=" in kv:
+                                key, value = kv.split("=", 1)
+                                key = key.strip()
+                                value = value.strip()
+                                
+                                if key == "max_comments":
+                                    # Validate and parse max_comments
+                                    try:
+                                        max_comments_val = int(value)
+                                        if max_comments_val > 0:
+                                            metadata["max_comments"] = max_comments_val
+                                        else:
+                                            logger.warning(
+                                                f"[Mode 2] Line {line_num}: Invalid max_comments={value} "
+                                                f"(must be positive integer). Ignoring metadata."
+                                            )
+                                    except ValueError:
+                                        logger.warning(
+                                            f"[Mode 2] Line {line_num}: Invalid max_comments={value} "
+                                            f"(not an integer). Ignoring metadata."
+                                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"[Mode 2] Line {line_num}: Failed to parse metadata '{metadata_str}': {e}. "
+                            f"Ignoring metadata."
+                        )
+                    
+                    post_urls.append(url)
+                    if metadata:
+                        url_metadata[url] = metadata
+                        logger.debug(
+                            f"[Mode 2] Line {line_num}: {url} with metadata {metadata}"
+                        )
+                else:
+                    # Legacy format: plain URL (backward compatible)
+                    post_urls.append(line)
+            
             logger.info(f"Read {len(post_urls)} URLs from {urls_filepath}.")
-            logger.info(f"[Mode 2] URL file contents:\n" + "\n".join(f"  - {url}" for url in post_urls))
+            if url_metadata:
+                logger.info(
+                    f"[Mode 2] URL metadata overrides: {len(url_metadata)} URL(s) with custom settings"
+                )
+            logger.debug(f"[Mode 2] URL file contents:\n" + "\n".join(f"  - {url}" for url in post_urls))
         except FileNotFoundError:
             logger.error(f"URL file not found at: {urls_filepath}")
+            return {}
+        except Exception as e:
+            logger.error(f"Error reading URL file: {e}")
+            logger.debug(traceback.format_exc())
             return {}
 
         if not post_urls:
@@ -257,11 +318,12 @@ class Pipeline:
         if run_config.main.randomize_batch:
             batch_size = random.randint(batch_size, batch_size + 4)
 
-        # 8. Scrape using the SAME backend path as mode-1
+        # 8. Scrape using the SAME backend path as mode-1 with optional per-URL metadata
         return self.backend.scrape_posts_in_batches(
             urls_to_scrape,
             batch_size=batch_size,
-            save_every=run_config.main.save_every
+            save_every=run_config.main.save_every,
+            url_metadata=url_metadata if url_metadata else None
         )
 
     def run(self) -> dict:
@@ -278,7 +340,7 @@ class Pipeline:
             self.backend.start()
             attach_debugger_if_needed()
             self.master_config._driver = self.backend.driver
-            logger.info(f"Master config: {self.master_config}")
+            logger.debug(f"Master config: {self.master_config}")
             # Startup log with thor_worker_id
             logger.info(f"igscraper start | thor_worker_id={self.thor_worker_id}")
             # Check which mode to run in

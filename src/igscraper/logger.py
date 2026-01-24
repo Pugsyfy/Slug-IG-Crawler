@@ -2,18 +2,15 @@ import logging
 import sys
 import time
 from pathlib import Path
+
 # Suppress verbose logs from selenium-wire and its dependencies
+# These are set at module level to reduce noise from third-party libraries
+# They run before config is loaded, but only affect specific noisy loggers
 logging.getLogger('seleniumwire').setLevel(logging.WARNING)
 logging.getLogger('seleniumwire.server').setLevel(logging.WARNING)
 logging.getLogger('seleniumwire.storage').setLevel(logging.WARNING)
-logging.getLogger('h2').setLevel(logging.WARNING) # h2 is a dependency of selenium-wire
-logging.getLogger('hpack').setLevel(logging.WARNING) # hpack is a dependency of h2
-
-
-import logging
-import sys
-import time
-from pathlib import Path
+logging.getLogger('h2').setLevel(logging.WARNING)  # h2 is a dependency of selenium-wire
+logging.getLogger('hpack').setLevel(logging.WARNING)  # hpack is a dependency of h2
 
 def configure_root_logger(config: dict) -> None:
     """
@@ -61,8 +58,21 @@ def configure_root_logger(config: dict) -> None:
 
 
 def get_logger(name: str = "igscraper") -> logging.Logger:
-    """Get a named logger that inherits root settings."""
-        # Silence noisy libs
+    """
+    Get a named logger that inherits root settings from config.toml [logging] section.
+    
+    The root logger is configured by configure_root_logger() which reads from config.toml.
+    This function returns a child logger that inherits the root logger's level, handlers,
+    and formatters as configured.
+    
+    Args:
+        name: Logger name (typically __name__ of the calling module)
+        
+    Returns:
+        A logger instance that respects config.toml [logging] settings
+    """
+    # Silence noisy third-party libraries (these are library-specific, not app-level)
+    # These settings are independent of config.toml and only affect external library noise
     logging.getLogger("selenium").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.ERROR)
     logging.getLogger("webdriver_manager").setLevel(logging.ERROR)

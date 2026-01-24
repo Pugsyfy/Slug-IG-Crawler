@@ -1,20 +1,11 @@
 from __future__ import annotations
-from typing import Optional, List
-from pydantic import BaseModel
-import json
-from typing import Dict, Any, List, Type, Optional, Union
-from pydantic import TypeAdapter
-import re
-from typing import Dict, Pattern, Type, List, Union
-from igscraper.logger import get_logger
-logger = get_logger(__name__)
-
-
-from typing import Any, Dict, List
+from typing import Optional, List, Dict, Any, Type, Union, Pattern
 from pydantic import BaseModel, TypeAdapter
-import logging
+import json
+import re
+from igscraper.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseFlexibleSafeModel(BaseModel):

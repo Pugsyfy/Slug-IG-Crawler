@@ -1,6 +1,6 @@
 import functools
-import logging
 import traceback
+from igscraper.logger import get_logger
 
 
 def try_except(
@@ -27,12 +27,12 @@ def try_except(
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            # Use self.logger if available; fallback to module logger
+            # Use self.logger if available; fallback to module logger that respects config.toml
             logger = None
             if args and hasattr(args[0], "logger"):
                 logger = getattr(args[0], "logger", None)
             if logger is None:
-                logger = logging.getLogger(func.__module__)
+                logger = get_logger(func.__module__)
 
             try:
                 return func(*args, **kwargs)

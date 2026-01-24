@@ -9,6 +9,10 @@ from pydantic import PrivateAttr
 from igscraper.models.registry_parser import GraphQLModelRegistry
 
 PROJECT_ROOT = Path.cwd()  # since you always start in root
+
+# Suppress noisy third-party library loggers (set before config loads)
+# These are library-specific settings, independent of config.toml [logging] section
+# They only affect external library noise, not application logging
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("selenium.webdriver.remote").setLevel(logging.INFO)
 
