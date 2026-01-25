@@ -767,7 +767,7 @@ use_docker = true  # Set to true when running in Docker
 When `use_docker=True`, the backend:
 - Uses environment variables `CHROME_BIN` and `CHROMEDRIVER_BIN` for browser binaries
 - Applies Docker-specific Chrome flags: `--no-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`
-- Uses `/data/chrome-profile` as the Chrome user data directory
+- Uses `/tmp/chrome-profile` as the Chrome user data directory (can be overridden via `IGSCRAPER_CHROME_PROFILE` env var)
 - Configures platform identity as "Linux x86_64"
 
 ### Dockerfile
@@ -829,7 +829,7 @@ docker-compose down
 - Valid `config.toml` file with `use_docker = true`
 
 **Important Notes:**
-- The Chrome profile directory (`./data/chrome-profile`) should exist and contain valid cookies for authentication
+- The Chrome profile directory defaults to `/tmp/chrome-profile` (RAM-mounted on remote servers) and is automatically created if it doesn't exist. Can be overridden via `IGSCRAPER_CHROME_PROFILE` environment variable.
 - The config file is mounted read-only to prevent accidental modifications
 - Shared memory size (2GB) is increased to prevent Chrome crashes in containerized environments
 - Debug port 5678 is exposed (for development only, should be removed in production)

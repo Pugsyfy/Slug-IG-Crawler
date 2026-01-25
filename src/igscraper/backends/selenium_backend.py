@@ -268,7 +268,7 @@ class SeleniumBackend(Backend):
         if self.config.main.use_docker:
             chrome_bin = os.environ["CHROME_BIN"]
             chromedriver_bin = os.environ["CHROMEDRIVER_BIN"]
-            profile_dir = os.getenv("IGSCRAPER_CHROME_PROFILE","/data/chrome-profile")
+            profile_dir = os.getenv("IGSCRAPER_CHROME_PROFILE","/tmp/chrome-profile")
             platform = "Linux x86_64"
 
             options.add_argument("--no-sandbox")
@@ -282,10 +282,31 @@ class SeleniumBackend(Backend):
                 "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
             )
             chromedriver_bin = "/opt/homebrew/bin/chromedriver"
-            profile_dir = os.getenv("IGSCRAPER_CHROME_PROFILE")
+            profile_dir = os.getenv("IGSCRAPER_CHROME_PROFILE", "/tmp/chrome-profile")
             platform = "Linux x86_64"  # intentionally Linux-like
 
             options.add_argument("--remote-debugging-pipe")
+
+        # --------------------------------------------------
+        # Append worker_id and random suffix to profile path
+        # --------------------------------------------------
+        if profile_dir:
+            # Generate random 3-character alphanumeric string
+            random_suffix = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=3))
+            
+            # Append worker_id and random suffix if thor_worker_id is available
+            if self.thor_worker_id:
+                profile_dir = f"{profile_dir}-{self.thor_worker_id}-{random_suffix}"
+            else:
+                # Fallback: just append random suffix if worker_id not available
+                profile_dir = f"{profile_dir}-{random_suffix}"
+                logger.warning("thor_worker_id not set, using profile path without worker_id suffix")
+
+        # --------------------------------------------------
+        # Ensure profile directory exists (Chrome requires it)
+        # --------------------------------------------------
+        if profile_dir:
+            os.makedirs(profile_dir, exist_ok=True)
 
         # --------------------------------------------------
         # Assert version lock
