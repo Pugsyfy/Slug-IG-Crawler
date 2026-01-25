@@ -24,7 +24,7 @@ services:
       - ${IGSCRAPER_CHROME_PROFILE}:/tmp/chrome-profile
       - ${IGSCRAPER_COOKIES}/cookies_chromium_linuxish_emmaCooking_1767731862.json:/cookies/cookies_chromium_linuxish_emmaCooking_1767731862.json:ro
     tmpfs:
-      - /tmp:size=5g,mode=1777
+      - /tmp:size=1g,mode=1777
     environment:
       # - DEBUG_ATTACH=1
       - use_docker=true

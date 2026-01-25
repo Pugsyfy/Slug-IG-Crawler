@@ -2,7 +2,7 @@
 
 [main]
 # defaults to 1 if not set
-mode = 1
+mode = 2
 # --- CHOOSE ONE MODE ---
 
 # mode 1: Scrape from profiles.
@@ -55,18 +55,18 @@ target_profiles = [
 
 
 # mode 2: Scrape from a list of URLs.
-#run_name_for_url_file = "test_comments_fetch_url" # Used for output folder name in URL file mode
+run_name_for_url_file = "test_comments_fetch_url.txt" # Used for output folder name in URL file mode
 
 # comment mode
 fetch_comments = true
-fetch_replies = true
+fetch_replies = false
 max_comments = 40
 
 # If true, the browser will run in the background without a visible window.
 # Recommended: true for performance, false for debugging.
-headless = false
+headless = true
 enable_screenshots = true
-use_docker = false
+use_docker = true
 # The minimum and maximum random delay (in seconds) between batches of requests.
 # This helps avoid rate-limiting. Recommended: 2-5 seconds.
 rate_limit_seconds_min = 2
@@ -112,7 +112,7 @@ consumer_id = "default_consumer"
 output_dir = "outputs"
 # These paths use placeholders like {target_profile} which will be automatically filled.
 # In URL file mode, {target_profile} is replaced by `run_name_for_url_file`.
-#urls_filepath = "test_comments_fetch_url.txt"
+urls_filepath = "test_comments_fetch_url.txt"
 
 shot_dir = "{output_dir}/{date}/screens"
 posts_path = "{output_dir}/{date}/{target_profile}/posts_{target_profile}_{datetime}.txt"
@@ -138,7 +138,7 @@ cookie_file = "/Users/shang/my_work/ig_profile_scraper/src/igscraper/cookies/shi
 [logging]
 # The logging level.
 # Recommended: "INFO" for normal runs, "DEBUG" for troubleshooting.
-level = "INFO"
+level = "DEBUG"
 log_dir = "outputs/logs"
 log_format = "%(asctime)s [%(levelname)s/%(processName)s] %(name)s: %(message)s"
 date_format = "%Y-%m-%d %H:%M:%S"
