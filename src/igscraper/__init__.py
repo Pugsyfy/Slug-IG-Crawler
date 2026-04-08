@@ -1,4 +1,4 @@
-"""Instagram profile scraper package (distribution name on PyPI: ``slug-ig-crawler``)."""
+"""Slug-Ig-Crawler (PyPI distribution name: ``slug-ig-crawler``; import package: ``igscraper``)."""
 
 from importlib.metadata import PackageNotFoundError, version
 

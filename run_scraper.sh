@@ -6,7 +6,7 @@ VENV_DIR=".venv3.10"   # path to your venv
 
 usage() {
     echo "Usage:"
-    echo "  $0                    # run the CLI pipeline (python -m igscraper)"
+    echo "  $0                    # run the CLI pipeline (Slug-Ig-Crawler or python -m igscraper)"
     exit 1
 }
 
@@ -31,6 +31,6 @@ fi
 source "$VENV_DIR/bin/activate"
 
 echo "==> Running Python scraper (inside venv)..."
-python3.10 -m igscraper.cli --config config.toml
+Slug-Ig-Crawler --config config.toml
 
 echo "==> Done."

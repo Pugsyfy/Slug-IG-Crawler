@@ -71,4 +71,4 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-CMD ["slug-ig-crawler", "--config", "config.toml"]
+CMD ["Slug-Ig-Crawler", "--config", "config.toml"]

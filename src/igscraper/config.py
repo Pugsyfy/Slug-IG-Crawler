@@ -10,6 +10,18 @@ from igscraper.models.registry_parser import GraphQLModelRegistry
 
 PROJECT_ROOT = Path.cwd()  # since you always start in root
 
+
+def get_default_cached_config_path() -> Path:
+    """
+    Default user config location when ``--config`` is omitted: ``~/.slug/config.toml``.
+
+    The file may not exist yet; callers should check before loading.
+    """
+    from igscraper.paths import get_cached_config_path
+
+    return get_cached_config_path()
+
+
 # Suppress noisy third-party library loggers (set before config loads)
 # These are library-specific settings, independent of config.toml [logging] section
 # They only affect external library noise, not application logging

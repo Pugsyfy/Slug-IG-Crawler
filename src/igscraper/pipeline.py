@@ -1,5 +1,5 @@
 """
-Main pipeline for slug-ig-crawler.
+Main pipeline for Slug-Ig-Crawler.
 
 This module orchestrates the entire scraping process, from loading the configuration
 to initializing the backend, collecting post URLs, and scraping them in batches.
@@ -403,7 +403,7 @@ class Pipeline:
             "category": category,
             "creator_handle": creator_handle,
             "content_id": content_id,
-            "pipeline": "igscraper",
+            "pipeline": "Slug-Ig-Crawler",
             "duration_ms": duration_ms,
             "status": status,
             "error_type": error_type,

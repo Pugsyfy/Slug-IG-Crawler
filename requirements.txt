@@ -1,4 +1,5 @@
-# Dependencies are declared in pyproject.toml (package name on PyPI: slug-ig-crawler).
+# Dependencies are declared in pyproject.toml (PyPI package name: slug-ig-crawler; CLI: Slug-Ig-Crawler).
+# Browser binaries are not installed by pip; use: Slug-Ig-Crawler bootstrap → cache under ~/.slug/
 #
 # Local development (editable + tooling + optional video/json5 helpers):
 #   pip install -e ".[dev,video,json5]"

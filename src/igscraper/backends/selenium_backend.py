@@ -37,6 +37,7 @@ from ..pages.profile_page import ProfilePage
 from ..logger import get_logger
 
 from igscraper.chrome import patch_driver
+from igscraper.paths import get_cached_browser_binaries
 from igscraper.utils import (
     HumanScroller,
     click_all_reply_buttons_gently,
@@ -190,16 +191,16 @@ class SeleniumBackend(Backend):
             chrome = chrome or _DOCKER_CHROME_BIN
             driver = driver or _DOCKER_CHROMEDRIVER_BIN
         else:
-            chrome = (
-                chrome
-                or _strip_or_none(getattr(m, "chrome_binary_path", None))
-                or _DEFAULT_LOCAL_CHROME_BIN
-            )
-            driver = (
-                driver
-                or _strip_or_none(getattr(m, "chromedriver_binary_path", None))
-                or _DEFAULT_LOCAL_CHROMEDRIVER_BIN
-            )
+            chrome = chrome or _strip_or_none(getattr(m, "chrome_binary_path", None))
+            driver = driver or _strip_or_none(getattr(m, "chromedriver_binary_path", None))
+            if not chrome or not driver:
+                c_cached, d_cached = get_cached_browser_binaries()
+                if not chrome and c_cached:
+                    chrome = str(c_cached)
+                if not driver and d_cached:
+                    driver = str(d_cached)
+            chrome = chrome or _DEFAULT_LOCAL_CHROME_BIN
+            driver = driver or _DEFAULT_LOCAL_CHROMEDRIVER_BIN
 
         logger.info(
             "Browser binaries (CHROME_BIN/CHROMEDRIVER_BIN override when set): "
@@ -1338,7 +1339,7 @@ class SeleniumBackend(Backend):
             "category": category,
             "creator_handle": creator_handle,
             "content_id": content_id,
-            "pipeline": "igscraper",
+            "pipeline": "Slug-Ig-Crawler",
             "duration_ms": duration_ms,
             "status": status,
             "error_type": error_type,

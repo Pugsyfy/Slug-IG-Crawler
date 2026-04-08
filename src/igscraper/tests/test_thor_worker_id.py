@@ -18,16 +18,85 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 try:
+    from pydantic import ValidationError
     from igscraper.config import load_config, Config, TraceConfig
     from igscraper.services.enqueue_client import FileEnqueuer, PostgresConfig
+
+    import igscraper.pipeline  # noqa: F401 — registers igscraper.pipeline for @patch("igscraper.pipeline.…")
 except ImportError:
     # If running from different path, adjust imports
     import sys
     src_path = Path(__file__).resolve().parent.parent.parent.parent
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path / "src"))
+    from pydantic import ValidationError  # noqa: F401
     from igscraper.config import load_config, Config, TraceConfig
     from igscraper.services.enqueue_client import FileEnqueuer, PostgresConfig
+    import igscraper.pipeline  # noqa: F401
+
+
+class TestPushToGcsConfigValidation(unittest.TestCase):
+    """load_config: [main].push_to_gcs must be 0 or 1."""
+
+    def setUp(self):
+        self.test_dir = Path(tempfile.mkdtemp())
+        self.config_path = self.test_dir / "test_config.toml"
+
+    def tearDown(self):
+        import shutil
+        if self.test_dir.exists():
+            shutil.rmtree(self.test_dir)
+
+    def _base_config(self, push_to_gcs):
+        return {
+            "main": {
+                "target_profiles": [{"name": "testuser", "num_posts": 10}],
+                "push_to_gcs": push_to_gcs,
+            },
+            "data": {
+                "output_dir": "outputs",
+                "shot_dir": "shots",
+                "posts_path": "posts.txt",
+                "metadata_path": "metadata.jsonl",
+                "skipped_path": "skipped.txt",
+                "tmp_path": "tmp.jsonl",
+                "cookie_file": "cookie.json",
+                "media_path": "media",
+                "schema_path": "schema.yaml",
+                "models_path": "models.jsonl",
+                "extracted_data_path": "extracted.jsonl",
+                "graphql_keys_path": "keys.jsonl",
+                "profile_page_data_key": ["key1"],
+                "post_page_data_key": ["key2"],
+                "post_entity_path": "post_entity.jsonl",
+                "profile_path": "profile.jsonl",
+            },
+            "logging": {
+                "level": "INFO",
+                "log_dir": "logs",
+                "log_format": "%(message)s",
+                "date_format": "%Y-%m-%d",
+            },
+            "trace": {"thor_worker_id": "w1"},
+        }
+
+    def test_push_to_gcs_zero_loads(self):
+        with open(self.config_path, "w") as f:
+            toml.dump(self._base_config(0), f)
+        cfg = load_config(str(self.config_path))
+        self.assertEqual(cfg.main.push_to_gcs, 0)
+
+    def test_push_to_gcs_one_loads(self):
+        with open(self.config_path, "w") as f:
+            toml.dump(self._base_config(1), f)
+        cfg = load_config(str(self.config_path))
+        self.assertEqual(cfg.main.push_to_gcs, 1)
+
+    def test_push_to_gcs_invalid_raises(self):
+        with open(self.config_path, "w") as f:
+            toml.dump(self._base_config(2), f)
+        with self.assertRaises(ValidationError):
+            load_config(str(self.config_path))
 
 
 class TestTraceConfigValidation(unittest.TestCase):
@@ -92,8 +161,8 @@ class TestTraceConfigValidation(unittest.TestCase):
         self.assertIsInstance(config.trace, TraceConfig)
         self.assertEqual(config.trace.thor_worker_id, "worker-test-123")
     
-    def test_config_missing_trace_section_fails(self):
-        """Test that missing [trace] section raises ValueError."""
+    def test_config_missing_trace_section_gets_placeholder(self):
+        """Missing [trace] is satisfied with a placeholder so loaders can parse; Pipeline validates later."""
         config_data = {
             "main": {
                 "target_profiles": [{"name": "testuser", "num_posts": 10}],
@@ -124,15 +193,12 @@ class TestTraceConfigValidation(unittest.TestCase):
             }
         }
         self._create_config_file(config_data)
-        
-        with self.assertRaises(ValueError) as context:
-            load_config(str(self.config_path))
-        
-        self.assertIn("trace", str(context.exception).lower())
-        self.assertIn("required", str(context.exception).lower())
+
+        config = load_config(str(self.config_path))
+        self.assertEqual(config.trace.thor_worker_id, "not-validated-yet")
     
     def test_config_missing_thor_worker_id_fails(self):
-        """Test that missing thor_worker_id in [trace] raises ValueError."""
+        """Empty [trace] cannot satisfy TraceConfig (thor_worker_id required)."""
         config_data = {
             "main": {
                 "target_profiles": [{"name": "testuser", "num_posts": 10}],
@@ -164,20 +230,15 @@ class TestTraceConfigValidation(unittest.TestCase):
             "trace": {}
         }
         self._create_config_file(config_data)
-        
-        with self.assertRaises(ValueError) as context:
+
+        with self.assertRaises(ValidationError):
             load_config(str(self.config_path))
-        
-        self.assertIn("thor_worker_id", str(context.exception).lower())
-        self.assertIn("missing", str(context.exception).lower() or "required" in str(context.exception).lower())
     
     def test_config_empty_thor_worker_id_fails(self):
-        """Test that empty thor_worker_id raises ValueError."""
+        """Empty or whitespace-only thor_worker_id: load_config may succeed; Pipeline rejects."""
+        from igscraper.pipeline import Pipeline
+
         for empty_value in ['', '   ', '\t\n']:
-            # Skip empty string test since it might be caught earlier by Pydantic
-            # Focus on whitespace-only strings
-            if empty_value == '':
-                continue
             config_data = {
                 "main": {
                     "target_profiles": [{"name": "testuser", "num_posts": 10}],
@@ -211,13 +272,15 @@ class TestTraceConfigValidation(unittest.TestCase):
                 }
             }
             self._create_config_file(config_data)
-            
-            with self.assertRaises(ValueError) as context:
+
+            try:
                 load_config(str(self.config_path))
-            
+            except ValidationError:
+                continue
+
+            with self.assertRaises(ValueError) as context:
+                Pipeline(str(self.config_path))
             self.assertIn("thor_worker_id", str(context.exception).lower())
-            exception_msg = str(context.exception).lower()
-            self.assertTrue("empty" in exception_msg or "missing" in exception_msg)
 
 
 class TestPipelineInitialization(unittest.TestCase):

@@ -63,13 +63,16 @@ Repository = "https://github.com/Pugsy-Explores/Slug-IG-Crawler"
 Documentation = "https://github.com/Pugsy-Explores/Slug-IG-Crawler#readme"
 
 [project.scripts]
-slug-ig-crawler = "igscraper.cli:main"
+"Slug-Ig-Crawler" = "igscraper.cli:main"
 igscraper = "igscraper.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["igscraper*"]
 exclude = ["igscraper.tests*"]
+
+[tool.setuptools.package-data]
+igscraper = ["config.example.toml", "flatten_schema.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["src/igscraper/tests"]

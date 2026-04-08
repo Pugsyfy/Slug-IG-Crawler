@@ -1,15 +1,15 @@
 # Canonical compose for local/manual runs. Orchestrators (e.g. Thor) use their own
 # `docker compose -f …` path via DOCKER_COMPOSE_FILE; they typically run:
-#   docker compose run --rm -v <workspace>:/job igscraper \
-#     python -m igscraper.cli --config /job/config.toml
+#   docker compose run --rm -v <workspace>:/job Slug-Ig-Crawler \
+#     Slug-Ig-Crawler --config /job/config.toml
 #
-# Service name `igscraper` should stay aligned with integration defaults.
+# Service name `Slug-Ig-Crawler` should stay aligned with integration defaults.
 # Optional: `cp .env.example .env` and use `docker compose --env-file .env ...` for extra vars.
 
 services:
-  igscraper:
+  Slug-Ig-Crawler:
     build: .
-    image: igscraper:local
+    image: slug-ig-crawler:local
     shm_size: 2gb
     environment:
       PYTHONPATH: /app/src
