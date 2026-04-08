@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/slug_ig_crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![Python versions](https://img.shields.io/pypi/pyversions/slug_ig_crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![License](https://img.shields.io/github/license/Pugsyfy/Slug-IG-Crawler)](https://github.com/Pugsyfy/Slug-IG-Crawler/blob/main/LICENSE)
-[![PyPI downloads](https://img.shields.io/pypi/dm/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
+[![PyPI downloads](https://img.shields.io/badge/downloads-see%20PyPI%20stats-0A66C2)](https://pypi.org/project/slug-ig-crawler/)
 [![Repo views](https://visitor-badge.laobi.icu/badge?page_id=Pugsyfy.Slug-IG-Crawler&left_text=Repo%20views)](https://github.com/Pugsyfy/Slug-IG-Crawler)
 
 **What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
