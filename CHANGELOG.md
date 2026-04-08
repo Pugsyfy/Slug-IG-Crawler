@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.23] - 2026-04-08
+
+### Changed
+- Improved terminal CLI UX:
+  - top-level `Slug-Ig-Crawler --help` now shows a clear command list and guidance
+  - running with no args now prints help instead of implicitly running
+  - invalid commands now print clearer errors with command hints
+  - per-command help is consistently available via `Slug-Ig-Crawler <command> --help`
+- Made `bootstrap` output more verbose with explicit progress and cache details.
+- Reduced non-run command noise by lazy-loading runtime-heavy imports for CLI run path.
+
 ## [2.2.22] - 2026-04-08
 
 ### Added
