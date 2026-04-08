@@ -10,6 +10,7 @@ from typing import Optional, Tuple
 
 SLUG_CACHE_DIRNAME = ".slug"
 CACHED_CONFIG_FILENAME = "config.toml"
+CACHED_DOTENV_FILENAME = ".env"
 BROWSER_SUBDIR = "browser"
 COOKIES_SUBDIR = "cookies"
 
@@ -25,6 +26,11 @@ def get_slug_cache_dir() -> Path:
 def get_cached_config_path() -> Path:
     """Default user config location: ``~/.slug/config.toml``."""
     return get_slug_cache_dir() / CACHED_CONFIG_FILENAME
+
+
+def get_cached_dotenv_path() -> Path:
+    """Optional Postgres env file: ``~/.slug/.env`` (written by ``bootstrap``)."""
+    return get_slug_cache_dir() / CACHED_DOTENV_FILENAME
 
 
 def get_cookie_cache_dir() -> Path:

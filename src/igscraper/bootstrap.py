@@ -8,7 +8,6 @@ import shutil
 import stat
 import tempfile
 import zipfile
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -23,6 +22,11 @@ from igscraper.paths import (
     get_chromedriver_extract_dir,
     get_slug_cache_dir,
     resolve_cft_platform,
+)
+from igscraper.pg_env import (
+    apply_resolved_to_environ,
+    resolve_pg_env_for_bootstrap,
+    write_cached_dotenv,
 )
 
 CFT_LKG_URL = (
@@ -171,16 +175,17 @@ def _run_postgres_setup(
         if progress:
             progress(msg)
 
-    host = (os.environ.get("PUGSY_PG_HOST") or "localhost").strip()
-    port = int((os.environ.get("PUGSY_PG_PORT") or "5433").strip())
-    user = (os.environ.get("PUGSY_PG_USER") or "postgres").strip()
-    password = os.environ.get("PUGSY_PG_PASSWORD") or ""
-    database = (os.environ.get("PUGSY_PG_DATABASE") or "").strip()
+    resolved = resolve_pg_env_for_bootstrap(apply_default_database=True)
+    host = resolved.host
+    port = resolved.port
+    user = resolved.user
+    password = resolved.password
+    database = resolved.database
 
-    if not database:
-        return (
-            False,
-            "PUGSY_PG_DATABASE is required for --setup-postgres (empty/missing).",
+    if resolved.used_default_database:
+        _emit(
+            "PUGSY_PG_DATABASE not set; using local default "
+            f"'{database}' (override with env or ~/.slug/.env)."
         )
 
     _emit(
@@ -207,7 +212,13 @@ def _run_postgres_setup(
                 )
                 posts_tbl, comments_tbl = cur.fetchone()
         if posts_tbl and comments_tbl:
-            return True, "Postgres bootstrap complete: required tables are present."
+            dotenv_path = write_cached_dotenv(resolved)
+            apply_resolved_to_environ(resolved)
+            return (
+                True,
+                "Postgres bootstrap complete: required tables are present. "
+                f"Wrote {dotenv_path}",
+            )
         return (
             False,
             "Postgres setup ran but required tables were not detected "

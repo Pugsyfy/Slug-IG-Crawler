@@ -226,8 +226,10 @@ def _build_parser() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Run postgres table/index setup using bundled postgres_setup.sql and "
-            "PUGSY_PG_* env vars (default: enabled). Use --no-setup-postgres to skip."
+            "Run postgres table/index setup using bundled postgres_setup.sql. "
+            "Uses local defaults when PUGSY_PG_* are unset (host localhost, port 5433, "
+            "user postgres, database postgres); on success writes ~/.slug/.env. "
+            "Use --no-setup-postgres to skip."
         ),
     )
     b.add_argument(

@@ -13,7 +13,8 @@
 --   PUGSY_PG_PORT      default 5433
 --   PUGSY_PG_USER      default postgres
 --   PUGSY_PG_PASSWORD
---   PUGSY_PG_DATABASE  (required for real use; empty default in code)
+--   PUGSY_PG_DATABASE  default postgres (local); override for production
+--   Bootstrap writes ~/.slug/.env after successful setup.
 --
 -- ROW SEMANTICS
 --   file_path: gs://bucket/path/file.jsonl when [main].push_to_gcs = 1, or an

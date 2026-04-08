@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 import psycopg
-from dotenv import load_dotenv
 from igscraper.logger import get_logger
+from igscraper.pg_env import DEFAULT_PG_DATABASE, load_dotenv_for_app
 
 logger = get_logger(__name__)
-load_dotenv(dotenv_path=os.environ.get("ENV_FILE", ".env"), override=False)
+load_dotenv_for_app()
 
 def log_pg_env():
     logger.info(
@@ -38,7 +38,7 @@ class PostgresConfig:
             port=int(os.environ.get("PUGSY_PG_PORT", "5433")),
             user=os.environ.get("PUGSY_PG_USER", "postgres"),
             password=os.environ.get("PUGSY_PG_PASSWORD", ""),
-            database=os.environ.get("PUGSY_PG_DATABASE", ""),
+            database=os.environ.get("PUGSY_PG_DATABASE") or DEFAULT_PG_DATABASE,
         )
 
     def __repr__(self) -> str:

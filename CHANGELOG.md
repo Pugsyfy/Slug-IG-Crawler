@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.26] - 2026-04-08
+
+### Added
+- **`~/.slug/.env`**: after a successful `bootstrap` Postgres setup, the effective `PUGSY_PG_*` values are written here for repeatable local configuration.
+
+### Changed
+- **`bootstrap`**: when `PUGSY_PG_DATABASE` is unset, local setup uses the default database name **`postgres`** instead of failing (matches typical local Postgres images).
+- **`FileEnqueuer` / `PostgresConfig`**: loads **`~/.slug/.env`** first, then project `.env` / `ENV_FILE` (project overrides cache). `PUGSY_PG_DATABASE` defaults to **`postgres`** when still unset after loading env files.
+
 ## [2.2.25] - 2026-04-08
 
 ### Changed

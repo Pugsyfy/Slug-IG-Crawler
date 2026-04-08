@@ -11,6 +11,7 @@ from igscraper.paths import (
     chromedriver_executable_path_after_extract,
     get_cached_browser_binaries,
     get_cached_config_path,
+    get_cached_dotenv_path,
     get_cookie_cache_dir,
     get_latest_cookie_path,
     resolve_cft_platform,
@@ -25,6 +26,11 @@ def test_resolve_cft_platform_linux_or_mac():
 def test_cached_config_path_respects_home(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     assert get_cached_config_path() == tmp_path / ".slug" / "config.toml"
+
+
+def test_cached_dotenv_path_respects_home(monkeypatch, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert get_cached_dotenv_path() == tmp_path / ".slug" / ".env"
 
 
 def test_get_cached_browser_binaries_missing(monkeypatch, tmp_path):

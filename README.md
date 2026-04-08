@@ -134,8 +134,8 @@ After install, the **`Slug-Ig-Crawler`** console script is on your `PATH` (legac
 | Step | Action |
 |------|--------|
 | 1 | Create and activate a virtualenv: `python3 -m venv .venv && source .venv/bin/activate` (Windows: `.venv\Scripts\activate`). |
-| 2 | Install from PyPI: `pip install "slug-ig-crawler[all]"`. Then run **`Slug-Ig-Crawler bootstrap`** to cache stable Chrome + ChromeDriver and seed `~/.slug/config.toml`. |
-| 3 | **Postgres (required if you use enqueue):** `psql "$YOUR_DATABASE_URL" -f scripts/postgres_setup.sql`. Set `PUGSY_PG_HOST`, `PUGSY_PG_PORT`, `PUGSY_PG_USER`, `PUGSY_PG_PASSWORD`, `PUGSY_PG_DATABASE` in `.env` or your shell. |
+| 2 | Install from PyPI: `pip install "slug-ig-crawler[all]"`. Then run **`Slug-Ig-Crawler bootstrap`** to cache stable Chrome + ChromeDriver, seed `~/.slug/config.toml`, and (by default) apply the bundled Postgres schema using **local defaults** (`localhost:5433`, user `postgres`, database `postgres`). On success, **`~/.slug/.env`** is written with the effective `PUGSY_PG_*` values. |
+| 3 | **Postgres (required if you use enqueue):** ensure Postgres is reachable at those defaults, or set `PUGSY_PG_*` in your shell, a project `.env`, or edit `~/.slug/.env`. You can also run `psql` manually: `psql "$YOUR_DATABASE_URL" -f scripts/postgres_setup.sql`. Use **`Slug-Ig-Crawler bootstrap --no-setup-postgres`** to skip schema setup. |
 | 4 | Run `Slug-Ig-Crawler save-cookie --username <instagram_username>` once, then set **`[data].cookie_file`** in `~/.slug/config.toml` (recommended: `~/.slug/cookies/latest.json`) and set **`[trace].thor_worker_id`** (any non-empty string, e.g. `local-dev`). Set **`push_to_gcs`** to `0` for a local-only trial without GCP. |
 | 5 | **Profile mode:** keep `[main].target_profiles` populated and ensure **`[data].urls_filepath`** is missing or points to a file that does **not** exist. **URL mode:** one URL per line in a file; set **`[data].urls_filepath`** to that real path. |
 | 6 | **Docker vs local:** `[main].use_docker = true` for Docker/Compose flows; `false` with `headless = false` for a visible local browser. See [Docker and Docker Compose](#docker-and-docker-compose). |
@@ -1036,7 +1036,7 @@ This section lists **outbound** integrations (cloud, database, HTTP) and what is
 
 ### PostgreSQL (when enqueue runs)
 
-`igscraper/services/enqueue_client.py` **`FileEnqueuer`** inserts rows after a successful GCS upload, using **`psycopg`** with DSN from environment (optional `.env` via `dotenv`; override dotenv path with **`ENV_FILE`**):
+`igscraper/services/enqueue_client.py` **`FileEnqueuer`** inserts rows after a successful GCS upload, using **`psycopg`** with DSN from environment. Env files are loaded in order: **`~/.slug/.env`** (if present), then **`ENV_FILE`** or **`.env`** in the current working directory (project file **overrides** the cache file for duplicate keys).
 
 | Variable | Role (defaults in code) |
 |----------|-------------------------|
@@ -1044,7 +1044,7 @@ This section lists **outbound** integrations (cloud, database, HTTP) and what is
 | `PUGSY_PG_PORT` | Port (`5433`) |
 | `PUGSY_PG_USER` | User (`postgres`) |
 | `PUGSY_PG_PASSWORD` | Password (empty default) |
-| `PUGSY_PG_DATABASE` | Database name (empty default — set for real use) |
+| `PUGSY_PG_DATABASE` | Database name (`postgres` when unset — typical local default; **override for production**) |
 
 Tables: **`crawled_posts`** and **`crawled_comments`** (see docstring in `enqueue_client.py` for expected columns, including **`thor_worker_id`**).
 
