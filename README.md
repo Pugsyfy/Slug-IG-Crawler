@@ -1,42 +1,133 @@
-# Instagram Profile Scraper - Technical Documentation
+# Instagram Profile Scraper
 
-## Table of Contents
+**What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
 
-1. [Quickstart: setup and run (~5 minutes)](#quickstart-setup-and-run-5-minutes)
-2. [Open source, research use, and acceptable use](#open-source-research-use-and-acceptable-use)
-3. [Architecture Overview](#architecture-overview)
-4. [Entry Point: CLI](#entry-point-cli)
-5. [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson)
-6. [Core Components](#core-components)
-7. [End-to-End Workflow](#end-to-end-workflow)
-8. [Execution Flow](#execution-flow)
-9. [Sequence Diagram](#sequence-diagram)
-10. [Configuration](#configuration)
-11. [External services and infrastructure](#external-services-and-infrastructure)
-12. [Data Models and Parsing](#data-models-and-parsing)
-13. [Authentication](#authentication)
-14. [Docker and Docker Compose](#docker-and-docker-compose)
-15. [Data Persistence](#data-persistence)
-16. [Performance Timing & Observability](#performance-timing--observability)
+This document is organized so you can **understand the repo, skim flags, and run a first pass in 5–10 minutes**, then jump to the deeper sections below when you need them.
 
 ---
 
-## Quickstart: setup and run (~5 minutes)
+## Table of contents
 
-**Goal:** install dependencies, create Postgres tables, configure TOML, run `python -m igscraper.cli` once.
+### Start here
+
+| # | Section |
+|---|--------|
+| 1 | [What this repository is](#what-this-repository-is) |
+| 2 | [Objectives & scope](#objectives--scope) |
+| 3 | [Features](#features) |
+| 4 | [Key configuration flags](#key-configuration-flags) |
+| 5 | [Quickstart (5-10 minutes)](#quickstart-5-10-minutes) |
+| 6 | [Documentation map](#documentation-map) |
+| 7 | [Open source, research use, and acceptable use](#open-source-research-use-and-acceptable-use) |
+
+### Reference (deep dive)
+
+| # | Section |
+|---|--------|
+| 8 | [Architecture Overview](#architecture-overview) |
+| 9 | [Entry Point: CLI](#entry-point-cli) |
+| 10 | [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson) |
+| 11 | [Core Components](#core-components) |
+| 12 | [End-to-End Workflow](#end-to-end-workflow) |
+| 13 | [Execution Flow](#execution-flow) |
+| 14 | [Sequence Diagram](#sequence-diagram) |
+| 15 | [Configuration](#configuration) |
+| 16 | [External services and infrastructure](#external-services-and-infrastructure) |
+| 17 | [Data Models and Parsing](#data-models-and-parsing) |
+| 18 | [Authentication](#authentication) |
+| 19 | [Docker and Docker Compose](#docker-and-docker-compose) |
+| 20 | [Data Persistence](#data-persistence) |
+| 21 | [Key Design Patterns](#key-design-patterns) |
+| 22 | [Dependencies](#dependencies) |
+| 23 | [Security Considerations](#security-considerations) |
+| 24 | [Troubleshooting](#troubleshooting) |
+| 25 | [Performance Timing & Observability](#performance-timing--observability) |
+| 26 | [Conclusion](#conclusion) |
+
+---
+
+## What this repository is
+
+- **Stack:** Python 3, **Selenium** (+ **selenium-wire** for captured network traffic), **Pydantic** config, optional **GCS** and **Postgres** (`psycopg`) for artifact handoff.
+- **Entry point:** `python -m igscraper.cli --config /path/to/config.toml` → `Pipeline` → `SeleniumBackend` → page objects and utilities.
+- **Outputs:** JSONL and related files under configurable paths; when `push_to_gcs = 1`, batches can be uploaded and **enqueued** (`crawled_posts` / `crawled_comments`). See `scripts/postgres_setup.sql` for the DB schema.
+- **Operations note:** Job orchestrators (e.g. **Thor**) may generate configs from their own templates and run the same CLI inside Docker; this README does not replace Thor’s own docs.
+
+---
+
+## Objectives & scope
+
+| In scope | Out of scope (by design) |
+|----------|---------------------------|
+| Research, education, and careful automation against **public** pages | A supported “Instagram API product” or official partnership |
+| **Transparency** in how data is collected (browser + captured requests) | High-volume production scraping, credential stuffing, or ToS violations |
+| **Traceability** via `thor_worker_id`, structured logs, optional DB rows | Hiding or bypassing platform protections |
+
+**You** are responsible for compliance with [Instagram / Meta terms](https://help.instagram.com/581066165581870), applicable law, and your own risk tolerance.
+
+---
+
+## Features
+
+- **Profile mode** — scrape by handle from `[main].target_profiles`.
+- **URL file mode** — scrape from a list file when `[data].urls_filepath` exists on disk (overrides profile mode).
+- **Captured GraphQL** — optional `scrape_using_captured_requests` path for comment/post data via performance logs.
+- **Local media + optional full-video download** — in-process script when not using captured-requests path for some media flows.
+- **GCS + Postgres handoff** — upload JSONL and enqueue `gs://` URIs (or **local paths** when `push_to_gcs = 0`).
+- **Screenshots → MP4** — optional `enable_screenshots` with shutdown upload (respects `push_to_gcs`).
+- **Docker or local Chrome** — `use_docker`, `headless`, env overrides `CHROME_BIN` / `CHROMEDRIVER_BIN`.
+- **Observability** — JSON timing events (`pipeline_total_time`, `pipeline_active_time`) and structured fields including `thor_worker_id`.
+
+---
+
+## Key configuration flags
+
+These are the knobs people usually need first. Full TOML lives in **`config.example.toml`**.
+
+| Flag / section | Role |
+|----------------|------|
+| **`[main].target_profiles`** | Profile mode: list of `{ name, num_posts }`. |
+| **`[data].urls_filepath`** | If this path **exists**, URL-file mode wins; otherwise profile mode. |
+| **`[main].scrape_using_captured_requests`** | Prefer GraphQL capture from network logs vs. heavier DOM-only flows where applicable. |
+| **`[main].push_to_gcs`** | `1` = upload JSONL to GCS and store `gs://...` in DB; `0` = no GCS, enqueue **absolute local paths**; also affects screenshot video upload/cleanup. |
+| **`[main].gcs_bucket_name`** | Target bucket when `push_to_gcs = 1` and upload paths run. |
+| **`[main].use_docker` / `headless`** | Browser environment: container vs. local; visible vs. headless. |
+| **`[main].enable_screenshots`** | Capture WebP frames and generate/upload MP4 on shutdown (see `push_to_gcs`). |
+| **`[trace].thor_worker_id`** | **Required** for `Pipeline`; used in logs, enqueue, and naming. |
+| **`PUGSY_PG_*` env vars** | Postgres connection for `FileEnqueuer` (see `enqueue_client.py`). |
+| **`GOOGLE_APPLICATION_CREDENTIALS`** | Typical GCP auth for GCS when uploading. |
+
+**Environment overrides for binaries:** `CHROME_BIN`, `CHROMEDRIVER_BIN` beat optional `[main].chrome_binary_path` / `chromedriver_binary_path`.
+
+---
+
+## Quickstart (5-10 minutes)
+
+**Goal:** install dependencies, apply the Postgres schema, drop in a minimal `config.toml`, and run the CLI once.
 
 | Step | Action |
 |------|--------|
 | 1 | `cd` to repo root. `python3 -m venv .venv && source .venv/bin/activate` (Windows: `.venv\Scripts\activate`). |
-| 2 | `pip install -r requirements.txt`. Export `PYTHONPATH=src` or always run as `python -m igscraper.cli` from the repo root (the CLI adds `src/` for you). |
-| 3 | **Postgres (mandatory for enqueue):** create tables with `scripts/postgres_setup.sql` — `psql "$YOUR_DATABASE_URL" -f scripts/postgres_setup.sql`. Set `PUGSY_PG_HOST`, `PUGSY_PG_PORT`, `PUGSY_PG_USER`, `PUGSY_PG_PASSWORD`, `PUGSY_PG_DATABASE` in `.env` (or the environment). The app reads these in `enqueue_client.py`. |
-| 4 | `cp config.example.toml config.toml`. Set **`[data].cookie_file`** to your saved session cookie path, **`[trace].thor_worker_id`** to any non-empty string (e.g. `local-dev`), and **`[main].gcs_bucket_name`** if you use GCS. |
-| 5 | **`[main].push_to_gcs`:** `1` = upload JSONL to GCS and store `gs://...` in `crawled_*` tables (needs GCP credentials, e.g. `GOOGLE_APPLICATION_CREDENTIALS`). `0` = no GCS upload; Postgres `file_path` stores the **absolute local path** to the JSONL (and screenshot finalization skips GCS upload and keeps local video/screenshots). |
-| 6 | **Profile mode (scrape by handle):** non-empty `[main].target_profiles` and either omit `[data].urls_filepath` or point it at a path that **does not exist** so mode 1 wins. **URL list mode:** put one URL per line in a file and set `[data].urls_filepath` to that file’s path (file must exist on disk). |
-| 7 | **Docker browser (`[main].use_docker = true`):** use the project’s Docker/Compose flow (see [Docker and Docker Compose](#docker-and-docker-compose)); set `CHROME_BIN` / `CHROMEDRIVER_BIN` as in the image. **Local live browser (`use_docker = false`):** set `headless = false` to see the window; optional `chrome_binary_path` / `chromedriver_binary_path` in `[main]` if not using env vars. |
-| 8 | Run: `python -m igscraper.cli --config config.toml`. |
+| 2 | `pip install -r requirements.txt`. Run the CLI as `python -m igscraper.cli` from the repo root (the CLI adds `src/` to `sys.path`). |
+| 3 | **Postgres (required if you use enqueue):** `psql "$YOUR_DATABASE_URL" -f scripts/postgres_setup.sql`. Set `PUGSY_PG_HOST`, `PUGSY_PG_PORT`, `PUGSY_PG_USER`, `PUGSY_PG_PASSWORD`, `PUGSY_PG_DATABASE` in `.env` or your shell. |
+| 4 | `cp config.example.toml config.toml`. Set **`[data].cookie_file`**, **`[trace].thor_worker_id`** (any non-empty string, e.g. `local-dev`). Set **`push_to_gcs`** to `0` for a local-only trial without GCP. |
+| 5 | **Profile mode:** keep `[main].target_profiles` populated and ensure **`[data].urls_filepath`** is missing or points to a file that does **not** exist. **URL mode:** one URL per line in a file; set **`[data].urls_filepath`** to that real path. |
+| 6 | **Docker vs local:** `[main].use_docker = true` for Docker/Compose flows; `false` with `headless = false` for a visible local browser. See [Docker and Docker Compose](#docker-and-docker-compose). |
+| 7 | Run: `python -m igscraper.cli --config config.toml`. |
 
-**Debug in the IDE:** see [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson). For **debugpy**: start configuration **igscraper: CLI (listen for debugger)**, then **igscraper: Attach to debugpy** so execution continues past `debugpy.wait_for_client()`.
+**Debug in the IDE:** [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson). For **debugpy**, start **igscraper: CLI (listen for debugger)**, then **igscraper: Attach to debugpy** so execution continues past `debugpy.wait_for_client()`.
+
+---
+
+## Documentation map
+
+After the quickstart, use the **Reference** table of contents above for:
+
+- **Architecture & flow** — diagrams and sequence for how a run is structured.
+- **Configuration** — full TOML sections, placeholders, `[trace]`.
+- **External services** — GCS, Postgres, path rules (`/outputs/`), `push_to_gcs` behavior.
+- **Docker** — compose layout and Chrome in containers.
+- **Operations** — timing logs, troubleshooting, dependencies, security notes.
 
 ---
 
@@ -53,25 +144,6 @@ This repository is **open source** (see the project license in the repo root). I
 **No affiliation.** This project is **not** affiliated with, endorsed by, or sponsored by Instagram, Meta, or their brands.
 
 **Disclaimer.** The software is provided **as-is** without warranty. The authors and contributors **assume no liability** for misuse, account actions (including suspension), legal claims, or damages arising from use of this repository. **You are solely responsible** for ensuring your use is lawful and compliant.
-
----
-
-## Overview
-
-The Instagram Profile Scraper is a Python-based web scraping application that collects public Instagram profile data, post metadata, comments, and media using Selenium WebDriver. The application is designed with a modular architecture that separates concerns into distinct layers: CLI interface, configuration management, pipeline orchestration, browser automation, and data persistence.
-
-### Runtime mode selection
-
-At `Pipeline.run()`, the effective mode is chosen **after** config load (the `[main].mode` value in TOML may be overwritten):
-
-1. **URL file mode (mode 2)** — if `[data].urls_filepath` is set **and** that path exists on disk.
-2. **Profile mode (mode 1)** — else if `[main].target_profiles` is non-empty.
-3. Otherwise the run logs a warning and does nothing.
-
-### Config template and Thor
-
-- **This repo:** use `config.example.toml` as a starting point (copy to `config.toml` and edit). It includes a `[trace]` section required by `Pipeline`.
-- **Thor** does not read this README; it generates job configs from its own template (e.g. `thor/assets/base_config.toml`) and invokes Docker with `DOCKER_COMPOSE_FILE` pointing at **its** compose file. The **service name** `igscraper` and the usual entrypoint `python -m igscraper.cli --config /job/config.toml` should stay compatible with that flow.
 
 ---
 
@@ -117,6 +189,19 @@ The application follows a layered architecture with clear separation of concerns
 │    Local files, GCS upload, database enqueueing             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Runtime mode selection
+
+At `Pipeline.run()`, the effective mode is chosen **after** config load (the `[main].mode` value in TOML may be overwritten):
+
+1. **URL file mode (mode 2)** — if `[data].urls_filepath` is set **and** that path exists on disk.
+2. **Profile mode (mode 1)** — else if `[main].target_profiles` is non-empty.
+3. Otherwise the run logs a warning and does nothing.
+
+### Config template and Thor
+
+- **This repo:** use `config.example.toml` as a starting point (copy to `config.toml` and edit). It includes a `[trace]` section required by `Pipeline`.
+- **Thor** does not read this README; it generates job configs from its own template (e.g. `thor/assets/base_config.toml`) and invokes Docker with `DOCKER_COMPOSE_FILE` pointing at **its** compose file. The **service name** `igscraper` and the usual entrypoint `python -m igscraper.cli --config /job/config.toml` should stay compatible with that flow.
 
 ---
 
@@ -1266,5 +1351,5 @@ grep "pipeline_.*_time.*creator_content" scraper_log_*.log | jq '{event, duratio
 
 ## Conclusion
 
-This documentation provides a comprehensive overview of the Instagram Profile Scraper architecture, components, and execution flow. The modular design supports maintainability and observability. Remember that this is an **open-source** project shared for **research and education**; any deployment must remain **consistent with Instagram / Meta policies**, applicable law, and the [acceptable use](#open-source-research-use-and-acceptable-use) section at the top of this document.
+This documentation provides a comprehensive overview of the Instagram Profile Scraper architecture, components, and execution flow. The modular design supports maintainability and observability. Remember that this is an **open-source** project shared for **research and education**; any deployment must remain **consistent with Instagram / Meta policies**, applicable law, and the [acceptable use](#open-source-research-use-and-acceptable-use) section.
 
