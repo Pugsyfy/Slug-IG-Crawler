@@ -1,5 +1,8 @@
 # Slug-Ig-Crawler
 
+[![CI](https://github.com/shang-vikas/insta_profile_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/shang-vikas/insta_profile_scraper/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/shang-vikas/insta_profile_scraper?style=social)](https://github.com/shang-vikas/insta_profile_scraper/stargazers)
+
 **What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
 
 This document is organized so you can **understand the repo, skim flags, and run a first pass in 5–10 minutes**, then jump to the deeper sections below when you need them.
