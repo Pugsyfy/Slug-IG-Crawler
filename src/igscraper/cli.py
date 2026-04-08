@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from difflib import get_close_matches
 from pathlib import Path
 
 # When running from a source checkout (`src/igscraper/...`), add `src/` so imports work.
@@ -173,70 +174,19 @@ def _cmd_version(_args: argparse.Namespace) -> None:
     print(__version__)
 
 
-def main() -> None:
-    argv = sys.argv[1:]
-    # Subcommands when first token is a known command
-    if argv and argv[0] in (
-        "run",
-        "bootstrap",
-        "show-config",
-        "save-cookie",
-        "list-cookies",
-        "version",
-    ):
-        cmd = argv[0]
-        rest = argv[1:]
-    else:
-        cmd = "run"
-        rest = argv
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="Slug-Ig-Crawler",
+        description=(
+            "Slug-Ig-Crawler CLI\n\n"
+            "Use one of the commands below. For command-specific help:\n"
+            "  Slug-Ig-Crawler <command> --help"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    sub = p.add_subparsers(dest="command")
 
-    if cmd == "bootstrap":
-        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
-        p.add_argument(
-            "--force",
-            action="store_true",
-            help="Re-download Chrome/ChromeDriver even if cache exists.",
-        )
-        p.add_argument(
-            "--force-config",
-            action="store_true",
-            help="Overwrite ~/.slug/config.toml with the bundled sample.",
-        )
-        args = p.parse_args(rest)
-        _cmd_bootstrap(args)
-        return
-
-    if cmd == "show-config":
-        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
-        args = p.parse_args(rest)
-        _cmd_show_config(args)
-        return
-
-    if cmd == "save-cookie":
-        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
-        p.add_argument(
-            "--username",
-            required=True,
-            help="Instagram username for naming the saved cookie file.",
-        )
-        args = p.parse_args(rest)
-        _cmd_save_cookie(args)
-        return
-
-    if cmd == "list-cookies":
-        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
-        args = p.parse_args(rest)
-        _cmd_list_cookies(args)
-        return
-
-    if cmd == "version":
-        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
-        args = p.parse_args(rest)
-        _cmd_version(args)
-        return
-
-    # run
-    run_p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
+    run_p = sub.add_parser("run", help="Run pipeline", description="Run pipeline.")
     run_p.add_argument(
         "--config",
         default=None,
@@ -245,8 +195,87 @@ def main() -> None:
             f"(default path: ~/.slug/{CACHED_CONFIG_FILENAME})."
         ),
     )
-    args = run_p.parse_args(rest)
-    _cmd_run(args)
+
+    b = sub.add_parser(
+        "bootstrap",
+        help="Download browser/cache sample config",
+        description="Bootstrap Chrome + ChromeDriver cache and sample config.",
+    )
+    b.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download Chrome/ChromeDriver even if cache exists.",
+    )
+    b.add_argument(
+        "--force-config",
+        action="store_true",
+        help="Overwrite ~/.slug/config.toml with the bundled sample.",
+    )
+
+    sub.add_parser(
+        "show-config",
+        help="Show bundled and cached config details",
+        description="Show bundled sample config plus cache paths and discovered files.",
+    )
+
+    sc = sub.add_parser(
+        "save-cookie",
+        help="Capture Instagram login cookies",
+        description="Capture login cookies and save into ~/.slug/cookies.",
+    )
+    sc.add_argument(
+        "--username",
+        required=True,
+        help="Instagram username for naming the saved cookie file.",
+    )
+
+    sub.add_parser(
+        "list-cookies",
+        help="List cached cookie JSON files",
+        description="Print only cookie JSON paths from ~/.slug/cookies.",
+    )
+    sub.add_parser("version", help="Print package version", description="Print package version.")
+    return p
+
+
+def main() -> None:
+    argv = sys.argv[1:]
+    parser = _build_parser()
+    known_cmds = ("run", "bootstrap", "show-config", "save-cookie", "list-cookies", "version")
+
+    if not argv:
+        parser.print_help()
+        return
+
+    if argv[0] in ("-h", "--help"):
+        parser.print_help()
+        return
+
+    # Backward compatibility: `Slug-Ig-Crawler --config ...` means `run --config ...`
+    if argv[0].startswith("-"):
+        argv = ["run", *argv]
+
+    if argv[0] not in known_cmds:
+        suggestion = get_close_matches(argv[0], known_cmds, n=1)
+        hint = f" Did you mean '{suggestion[0]}'?" if suggestion else ""
+        parser.exit(
+            2,
+            f"error: invalid command '{argv[0]}'.{hint}\nUse 'Slug-Ig-Crawler --help' to see commands.\n",
+        )
+
+    args = parser.parse_args(argv)
+    if args.command == "run":
+        _cmd_run(args)
+    elif args.command == "bootstrap":
+        _cmd_bootstrap(args)
+    elif args.command == "show-config":
+        _cmd_show_config(args)
+    elif args.command == "save-cookie":
+        _cmd_save_cookie(args)
+    elif args.command == "list-cookies":
+        _cmd_list_cookies(args)
+    elif args.command == "version":
+        _cmd_version(args)
 
 
 if __name__ == "__main__":
