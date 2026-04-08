@@ -1,13 +1,13 @@
 # Slug-Ig-Crawler
 
-[![CI](https://github.com/shang-vikas/insta_profile_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/shang-vikas/insta_profile_scraper/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/shang-vikas/insta_profile_scraper?style=social)](https://github.com/shang-vikas/insta_profile_scraper/stargazers)
+[![CI](https://github.com/Pugsy-Explores/Slug-IG-Crawler/actions/workflows/ci.yml/badge.svg)](https://github.com/Pugsy-Explores/Slug-IG-Crawler/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/Pugsy-Explores/Slug-IG-Crawler?style=social)](https://github.com/Pugsy-Explores/Slug-IG-Crawler/stargazers)
 [![PyPI version](https://img.shields.io/pypi/v/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![Python versions](https://img.shields.io/pypi/pyversions/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![License](https://img.shields.io/pypi/l/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
-[![Repo views](https://visitor-badge.laobi.icu/badge?page_id=shang-vikas.insta_profile_scraper)](https://github.com/shang-vikas/insta_profile_scraper)
-[![Codecov](https://codecov.io/gh/shang-vikas/insta_profile_scraper/graph/badge.svg)](https://codecov.io/gh/shang-vikas/insta_profile_scraper)
+[![Repo views](https://visitor-badge.laobi.icu/badge?page_id=Pugsy-Explores.Slug-IG-Crawler)](https://github.com/Pugsy-Explores/Slug-IG-Crawler)
+[![Codecov](https://codecov.io/gh/Pugsy-Explores/Slug-IG-Crawler/graph/badge.svg)](https://codecov.io/gh/Pugsy-Explores/Slug-IG-Crawler)
 
 **What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
 
@@ -124,6 +124,8 @@ After install, the **`Slug-Ig-Crawler`** console script is on your `PATH` (legac
 
 **Chrome / ChromeDriver (macOS and Linux):** `pip` does not download browsers. After `pip install "slug-ig-crawler[all]"` (or any install), run **`Slug-Ig-Crawler bootstrap`** once to fetch **stable** Chrome for Testing + matching ChromeDriver into **`~/.slug/browser/<platform>/`** and install a sample **`~/.slug/config.toml`** if missing. Until then, the first pipeline run prints a **stderr warning** suggesting bootstrap (silence with `IGSCRAPER_SILENT_BROWSER_CACHE_WARN=1`). Inspect templates with **`Slug-Ig-Crawler show-config`**.
 
+**Publishing to PyPI (maintainers):** see [docs/PYPI_RELEASE.md](docs/PYPI_RELEASE.md) (Trusted Publishing + release checklist; canonical org repo **Pugsy-Explores/Slug-IG-Crawler**).
+
 ---
 
 ## Quickstart (5-10 minutes)
@@ -153,6 +155,7 @@ After the quickstart, use the **Reference** table of contents above for:
 - **External services** — GCS, Postgres, path rules (`/outputs/`), `push_to_gcs` behavior.
 - **Docker** — compose layout and Chrome in containers.
 - **Operations** — timing logs, troubleshooting, dependencies, security notes.
+- **PyPI releases** — [docs/PYPI_RELEASE.md](docs/PYPI_RELEASE.md).
 
 ---
 

@@ -62,6 +62,9 @@ dev = [
 Homepage = "https://github.com/Pugsy-Explores/Slug-IG-Crawler"
 Repository = "https://github.com/Pugsy-Explores/Slug-IG-Crawler"
 Documentation = "https://github.com/Pugsy-Explores/Slug-IG-Crawler#readme"
+Issues = "https://github.com/Pugsy-Explores/Slug-IG-Crawler/issues"
+Changelog = "https://github.com/Pugsy-Explores/Slug-IG-Crawler/releases"
+PyPI = "https://pypi.org/project/slug-ig-crawler/"
 
 [project.scripts]
 "Slug-Ig-Crawler" = "igscraper.cli:main"
