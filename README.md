@@ -7,6 +7,7 @@
 [![License](https://img.shields.io/pypi/l/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![Repo views](https://visitor-badge.laobi.icu/badge?page_id=shang-vikas.insta_profile_scraper)](https://github.com/shang-vikas/insta_profile_scraper)
+[![Codecov](https://codecov.io/gh/shang-vikas/insta_profile_scraper/graph/badge.svg)](https://codecov.io/gh/shang-vikas/insta_profile_scraper)
 
 **What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
 
