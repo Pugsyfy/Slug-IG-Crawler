@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 import requests
 
 from igscraper.paths import (
@@ -133,6 +133,7 @@ def run_bootstrap(
     *,
     force_browser: bool = False,
     force_config: bool = False,
+    progress: Optional[Callable[[str], None]] = None,
 ) -> BootstrapResult:
     """
     Download stable Chrome + ChromeDriver for this OS/arch into ``~/.slug/browser/...``.
@@ -140,6 +141,10 @@ def run_bootstrap(
     If ``~/.slug/config.toml`` is missing, writes the bundled sample (unless *force_config*
     is used only when combined with ensure_sample — actually force_config overwrites config).
     """
+    def _emit(msg: str) -> None:
+        if progress:
+            progress(msg)
+
     try:
         cft_platform = resolve_cft_platform()
     except OSError as e:
@@ -150,17 +155,24 @@ def run_bootstrap(
             chrome_version="",
         )
 
+    _emit(f"Resolved CFT platform: {cft_platform}")
     chrome_dir = get_chrome_extract_dir(cft_platform)
     driver_dir = get_chromedriver_extract_dir(cft_platform)
     chrome_bin = chrome_executable_path_after_extract(cft_platform, chrome_dir)
     driver_bin = chromedriver_executable_path_after_extract(cft_platform, driver_dir)
+    _emit(f"Chrome cache dir: {chrome_dir}")
+    _emit(f"ChromeDriver cache dir: {driver_dir}")
 
     if (
         not force_browser
         and chrome_bin.is_file()
         and driver_bin.is_file()
     ):
+        _emit("Found cached Chrome + ChromeDriver pair; skipping downloads.")
         cfg_path, cfg_written = ensure_sample_config_in_cache(force=force_config)
+        _emit(
+            f"Sample config {'written' if cfg_written else 'already present'} at {cfg_path}"
+        )
         return BootstrapResult(
             ok=True,
             message="Chrome and ChromeDriver already present in cache; skipped download.",
@@ -172,6 +184,7 @@ def run_bootstrap(
             config_written=cfg_written,
         )
 
+    _emit("Fetching latest stable Chrome for Testing metadata...")
     try:
         version, chrome_url, driver_url = _fetch_stable_download_urls(cft_platform)
     except RuntimeError as e:
@@ -182,8 +195,13 @@ def run_bootstrap(
             chrome_version="",
         )
 
+    _emit(f"Stable Chrome version: {version}")
+    _emit(f"Chrome zip URL: {chrome_url}")
+    _emit(f"ChromeDriver zip URL: {driver_url}")
+
     get_slug_cache_dir().mkdir(parents=True, exist_ok=True)
     if force_browser:
+        _emit("Force mode enabled; removing existing cached browser directories.")
         if chrome_dir.exists():
             shutil.rmtree(chrome_dir)
         if driver_dir.exists():
@@ -194,7 +212,9 @@ def run_bootstrap(
         c_zip = tdir / "chrome.zip"
         d_zip = tdir / "chromedriver.zip"
         try:
+            _emit("Downloading Chrome zip...")
             _download_file(chrome_url, c_zip)
+            _emit("Downloading ChromeDriver zip...")
             _download_file(driver_url, d_zip)
         except requests.RequestException as e:
             return BootstrapResult(
@@ -205,7 +225,9 @@ def run_bootstrap(
             )
 
         try:
+            _emit("Extracting Chrome zip...")
             _extract_zip(c_zip, chrome_dir)
+            _emit("Extracting ChromeDriver zip...")
             _extract_zip(d_zip, driver_dir)
         except zipfile.BadZipFile as e:
             return BootstrapResult(
@@ -217,6 +239,7 @@ def run_bootstrap(
 
     _chmod_plus_x(chrome_bin)
     _chmod_plus_x(driver_bin)
+    _emit("Ensured executable permissions on browser binaries.")
 
     if not chrome_bin.is_file() or not driver_bin.is_file():
         return BootstrapResult(
@@ -230,6 +253,8 @@ def run_bootstrap(
         )
 
     cfg_path, cfg_written = ensure_sample_config_in_cache(force=force_config)
+    _emit(f"Sample config {'written' if cfg_written else 'already present'} at {cfg_path}")
+    _emit("Bootstrap finished successfully.")
 
     return BootstrapResult(
         ok=True,

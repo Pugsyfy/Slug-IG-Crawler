@@ -28,16 +28,15 @@ if _src.name == "src" and str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
 from igscraper.bootstrap import read_bundled_sample_config_text, run_bootstrap
-from igscraper.config import get_default_cached_config_path
 from igscraper import __version__
 from igscraper.login_Save_cookie import capture_login_cookies
 from igscraper.paths import (
+    CACHED_CONFIG_FILENAME,
     get_cached_config_path,
     get_cookie_cache_dir,
     get_slug_cache_dir,
     slug_cache_has_valid_browser_pair,
 )
-from igscraper.pipeline import Pipeline
 
 
 def _resolve_config_path(explicit: str | None) -> str:
@@ -78,6 +77,9 @@ def _maybe_warn_browser_cache() -> None:
 
 
 def _cmd_run(args: argparse.Namespace) -> None:
+    # Import lazily so non-run commands (bootstrap/version/etc.) do not pull heavy deps.
+    from igscraper.pipeline import Pipeline
+
     config_path = _resolve_config_path(args.config)
     _maybe_warn_browser_cache()
     pipeline = Pipeline(config_path=config_path)
@@ -85,9 +87,16 @@ def _cmd_run(args: argparse.Namespace) -> None:
 
 
 def _cmd_bootstrap(args: argparse.Namespace) -> None:
+    print("Starting bootstrap...")
+    print(f"  Cache root: {get_slug_cache_dir()}")
+    print(f"  Config path: {get_cached_config_path()}")
+    print(f"  Force browser download: {bool(args.force)}")
+    print(f"  Force config overwrite: {bool(args.force_config)}")
+
     res = run_bootstrap(
         force_browser=args.force,
         force_config=args.force_config,
+        progress=lambda msg: print(f"  - {msg}"),
     )
     if not res.ok:
         raise SystemExit(res.message)
@@ -233,7 +242,7 @@ def main() -> None:
         default=None,
         help=(
             "Path to config TOML. If omitted, uses ~/.slug/config.toml when that file exists "
-            f"(default path: {get_default_cached_config_path()})."
+            f"(default path: ~/.slug/{CACHED_CONFIG_FILENAME})."
         ),
     )
     args = run_p.parse_args(rest)
