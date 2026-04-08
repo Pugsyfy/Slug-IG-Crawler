@@ -23,7 +23,8 @@ jobs:
           pip install -e ".[dev,video,json5]"
 
       - name: Run tests
-        run: pytest
+        run: |
+          pytest
 
   build:
     runs-on: ubuntu-latest

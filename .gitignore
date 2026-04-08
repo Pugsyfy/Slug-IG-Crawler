@@ -20,3 +20,8 @@ src/igscraper/cookies/
 # setuptools (in-tree egg-info from builds)
 src/*.egg-info/
 
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
