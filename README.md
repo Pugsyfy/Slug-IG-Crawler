@@ -109,6 +109,7 @@ PyPI distribution name: **`slug-ig-crawler`** (Python import package: **`igscrap
 | Latest release from PyPI | `pip install slug-ig-crawler` |
 | With screenshot → MP4 helpers (`imageio`) | `pip install "slug-ig-crawler[video]"` |
 | Optional JSON5 parsing in the sorter | `pip install "slug-ig-crawler[json5]"` |
+| Video + JSON5 together | `pip install "slug-ig-crawler[all]"` |
 | Editable from this repo (dev + tests + extras) | `pip install -e ".[dev,video,json5]"` (same as `requirements.txt`) |
 
 After install, the **`igscraper`** console script is on your `PATH`. Dependencies are declared in **`pyproject.toml`** (the old fully pinned `requirements.txt` is replaced by that file plus the editable install line above).
