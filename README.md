@@ -1,5 +1,21 @@
 # Instagram Profile Scraper - Technical Documentation
 
+This repository is **open source** (see the project license in the repo root). It is shared for **transparency and research**, not as an official product or service.
+
+## Open source, research use, and acceptable use
+
+**Research and education only (recommended).** This software is intended for **research, education, and responsible personal experimentation** (for example, understanding browser automation or studying publicly visible page structure). It is **not** presented as a tool for high-volume production scraping, commercial data harvesting, or any use that conflicts with platform rules. **You** decide how you use it; **you** are responsible for that use.
+
+**Compliance with Instagram / Meta policies (mandatory).** Instagram and Meta impose [Terms of Use](https://help.instagram.com/581066165581870), [Community Guidelines](https://help.instagram.com/477434623621119), and other rules that apply to access, automation, and data. Automated or scripted access may be **restricted or prohibited** depending on context. You must **read, understand, and follow** the terms, policies, and technical limits that apply to your jurisdiction and use case—including any future updates Meta publishes. Do **not** use this project to circumvent security, rate limits, login walls, or other protections.
+
+**Responsible use.** Use conservative rate limits, respect people’s privacy and intellectual property, collect and retain only what you are permitted to, and stop immediately if the platform signals that access is unwelcome. Nothing in this documentation authorizes scraping in violation of applicable law or platform terms.
+
+**No affiliation.** This project is **not** affiliated with, endorsed by, or sponsored by Instagram, Meta, or their brands.
+
+**Disclaimer.** The software is provided **as-is** without warranty. The authors and contributors **assume no liability** for misuse, account actions (including suspension), legal claims, or damages arising from use of this repository. **You are solely responsible** for ensuring your use is lawful and compliant.
+
+---
+
 ## Overview
 
 The Instagram Profile Scraper is a Python-based web scraping application that collects public Instagram profile data, post metadata, comments, and media using Selenium WebDriver. The application is designed with a modular architecture that separates concerns into distinct layers: CLI interface, configuration management, pipeline orchestration, browser automation, and data persistence.
@@ -19,18 +35,20 @@ At `Pipeline.run()`, the effective mode is chosen **after** config load (the `[m
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Entry Point: CLI](#entry-point-cli)
-3. [Core Components](#core-components)
-4. [End-to-End Workflow](#end-to-end-workflow)
-5. [Execution Flow](#execution-flow)
-6. [Sequence Diagram](#sequence-diagram)
-7. [Configuration](#configuration)
-8. [Data Models and Parsing](#data-models-and-parsing)
-9. [Authentication](#authentication)
-10. [Docker and Docker Compose](#docker-and-docker-compose)
-11. [Data Persistence](#data-persistence)
-12. [Performance Timing & Observability](#performance-timing--observability)
+1. [Open source, research use, and acceptable use](#open-source-research-use-and-acceptable-use)
+2. [Architecture Overview](#architecture-overview)
+3. [Entry Point: CLI](#entry-point-cli)
+4. [Core Components](#core-components)
+5. [End-to-End Workflow](#end-to-end-workflow)
+6. [Execution Flow](#execution-flow)
+7. [Sequence Diagram](#sequence-diagram)
+8. [Configuration](#configuration)
+9. [External services and infrastructure](#external-services-and-infrastructure)
+10. [Data Models and Parsing](#data-models-and-parsing)
+11. [Authentication](#authentication)
+12. [Docker and Docker Compose](#docker-and-docker-compose)
+13. [Data Persistence](#data-persistence)
+14. [Performance Timing & Observability](#performance-timing--observability)
 
 ---
 
@@ -727,6 +745,63 @@ Path strings support the following placeholders that are automatically expanded:
 
 ---
 
+## External services and infrastructure
+
+This section lists **outbound** integrations (cloud, database, queues, HTTP) and what is **required by the config schema** vs **required only when a code path runs**.
+
+### Mandatory in every `config.toml` used with `load_config`
+
+| Item | Purpose |
+|------|--------|
+| **`[celery].broker_url` and `[celery].result_backend`** | Required fields in the Pydantic `Config` model. The main CLI pipeline does not start a Celery worker, but the values must be present in TOML. Separate **Celery workers** (`igscraper/mycelery/celery_app.py`) read `IGSCRAPER_CONFIG` (default `config.toml`) and use these URLs to connect to the broker and result backend. |
+
+### Instagram and the browser (always for scraping)
+
+| Item | Purpose |
+|------|--------|
+| **HTTPS to `instagram.com` (and related CDN domains)** | Selenium drives a real browser; there is **no** separate Instagram API key. Session auth uses **`[data].cookie_file`** (JSON cookies on disk). |
+| **GraphQL / XHR data** | Parsed from **Chrome performance logs** (captured requests), not from a standalone HTTP client to a documented public API. |
+
+### Google Cloud Storage (when upload paths run)
+
+`SeleniumBackend` constructs `google.cloud.storage.Client()` and uses **`[main].gcs_bucket_name`** for:
+
+- **`UploadAndEnqueue.upload_and_enqueue`** — uploads JSONL artifacts and enqueues (see PostgreSQL below). Triggered from `on_posts_batch_ready` / `on_comments_batch_ready` when those batches complete.
+- **`upload_video_to_gcs`** — when `enable_screenshots` is true, uploads the shutdown MP4 to the same bucket under `vid_log/`.
+
+**Setup:** Application Default Credentials, or **`GOOGLE_APPLICATION_CREDENTIALS`** pointing to a service account JSON with **write** access to the configured bucket. Without valid credentials, these steps fail when executed.
+
+**Path rule:** `services/upload_enqueue.py` builds object names from local paths that contain the marker **`/outputs/`** (default `GcsUploadConfig.outputs_marker`). Typical layouts use something like `.../outputs/<date>/...` so uploads resolve correctly.
+
+### PostgreSQL (when enqueue runs)
+
+`igscraper/services/enqueue_client.py` **`FileEnqueuer`** inserts rows after a successful GCS upload, using **`psycopg`** with DSN from environment (optional `.env` via `dotenv`; override dotenv path with **`ENV_FILE`**):
+
+| Variable | Role (defaults in code) |
+|----------|-------------------------|
+| `PUGSY_PG_HOST` | Host (`localhost`) |
+| `PUGSY_PG_PORT` | Port (`5433`) |
+| `PUGSY_PG_USER` | User (`postgres`) |
+| `PUGSY_PG_PASSWORD` | Password (empty default) |
+| `PUGSY_PG_DATABASE` | Database name (empty default — set for real use) |
+
+Tables: **`crawled_posts`** and **`crawled_comments`** (see docstring in `enqueue_client.py` for expected columns, including **`thor_worker_id`**).
+
+### Redis / Celery (when a task is published)
+
+`write_and_run_full_download_script_.delay(...)` in `selenium_backend.py` submits work to the **broker** in `[celery].broker_url`. That requires:
+
+- A **reachable broker** (commonly Redis) at that URL when the video-download path runs.
+- A **running Celery worker** that imports `igscraper.mycelery.tasks`, if you expect the task to execute.
+
+If you never hit that branch (or only use captured-requests flows without dispatching that task), you may still need a valid `broker_url` in TOML for **config loading** only.
+
+### Other HTTP (`requests`)
+
+Helpers in `utils.py` / `downloader.py` may use **`requests`** for ancillary downloads (e.g. media URLs). Those are **not** separate “API accounts”; they use normal HTTPS when those code paths run.
+
+---
+
 ## Data Models and Parsing
 
 ### GraphQL Model Registry
@@ -945,10 +1020,11 @@ Key external dependencies:
 
 ## Security Considerations
 
-1. **URL Validation**: `chrome.py` patches WebDriver methods to monitor for suspicious navigation
-2. **Cookie Security**: Cookies are stored locally and never exposed in logs
-3. **Rate Limiting**: Random delays and batch processing reduce detection risk
-4. **Anti-Detection**: Chrome options configured to evade bot detection
+1. **Platform policy and law**: Technical mitigations below do not replace compliance with Instagram / Meta terms or applicable law—see [Open source, research use, and acceptable use](#open-source-research-use-and-acceptable-use).
+2. **URL Validation**: `chrome.py` patches WebDriver methods to monitor for suspicious navigation
+3. **Cookie Security**: Cookies are stored locally and never exposed in logs
+4. **Rate Limiting**: Random delays and batch processing reduce detection risk
+5. **Anti-Detection**: Chrome options configured to evade bot detection
 
 ---
 
@@ -1115,5 +1191,5 @@ grep "pipeline_.*_time.*creator_content" scraper_log_*.log | jq '{event, duratio
 
 ## Conclusion
 
-This documentation provides a comprehensive overview of the Instagram Profile Scraper architecture, components, and execution flow. The modular design ensures maintainability and extensibility, while the detailed logging and error handling provide robust operation in production environments.
+This documentation provides a comprehensive overview of the Instagram Profile Scraper architecture, components, and execution flow. The modular design supports maintainability and observability. Remember that this is an **open-source** project shared for **research and education**; any deployment must remain **consistent with Instagram / Meta policies**, applicable law, and the [acceptable use](#open-source-research-use-and-acceptable-use) section at the top of this document.
 
