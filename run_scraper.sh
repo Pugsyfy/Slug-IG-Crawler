@@ -6,7 +6,7 @@ VENV_DIR=".venv3.10"   # path to your venv
 
 usage() {
     echo "Usage:"
-    echo "  $0                    # run the CLI pipeline (python -m igscraper.cli)"
+    echo "  $0                    # run the CLI pipeline (python -m igscraper)"
     exit 1
 }
 

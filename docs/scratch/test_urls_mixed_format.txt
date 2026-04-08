@@ -1,0 +1,15 @@
+# Test file: Mixed format (backward compatibility test)
+# Plain URLs (legacy format)
+https://www.instagram.com/p/DTMfilyE_28/
+
+# URL with max_comments override
+https://www.instagram.com/p/C9ABC123xyz/|max_comments=50
+
+# Another plain URL
+https://www.instagram.com/p/C8DEF456abc/
+
+# URL with max_comments override (higher value)
+https://www.instagram.com/p/C7GHI789def/|max_comments=150
+
+# Edge case: URL with spaces around metadata (should be handled)
+https://www.instagram.com/p/C6JKL012ghi/  |  max_comments=25

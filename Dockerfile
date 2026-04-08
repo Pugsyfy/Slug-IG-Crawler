@@ -71,4 +71,4 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-CMD ["igscraper", "--config", "config.toml"]
+CMD ["slug-ig-crawler", "--config", "config.toml"]

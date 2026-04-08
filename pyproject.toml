@@ -63,6 +63,7 @@ Repository = "https://github.com/Pugsy-Explores/Slug-IG-Crawler"
 Documentation = "https://github.com/Pugsy-Explores/Slug-IG-Crawler#readme"
 
 [project.scripts]
+slug-ig-crawler = "igscraper.cli:main"
 igscraper = "igscraper.cli:main"
 
 [tool.setuptools.packages.find]

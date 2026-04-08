@@ -1,4 +1,4 @@
-# Example / template for igscraper. Copy to `config.toml` and edit.
+# Example / template for slug-ig-crawler. Copy to `config.toml` and edit.
 # Thor generates job configs from its own template (e.g. thor/assets/base_config.toml),
 # not from this file — this is for humans and manual Docker runs.
 

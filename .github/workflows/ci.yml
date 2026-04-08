@@ -43,5 +43,5 @@ jobs:
       - name: Check artifacts
         run: |
           python -m pip install dist/*.whl
-          igscraper --help
+          slug-ig-crawler --help
           python -c "import igscraper; print(igscraper.__version__)"

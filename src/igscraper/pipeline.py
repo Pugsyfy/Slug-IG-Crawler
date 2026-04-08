@@ -1,5 +1,5 @@
 """
-Main pipeline for the Instagram Profile Scraper.
+Main pipeline for slug-ig-crawler.
 
 This module orchestrates the entire scraping process, from loading the configuration
 to initializing the backend, collecting post URLs, and scraping them in batches.

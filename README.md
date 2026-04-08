@@ -1,4 +1,4 @@
-# Instagram Profile Scraper
+# slug-ig-crawler
 
 **What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
 
@@ -50,7 +50,7 @@ This document is organized so you can **understand the repo, skim flags, and run
 ## What this repository is
 
 - **Stack:** Python 3, **Selenium** (+ **selenium-wire** for captured network traffic), **Pydantic** config, optional **GCS** and **Postgres** (`psycopg`) for artifact handoff.
-- **Entry point:** `igscraper --config /path/to/config.toml` (or `python -m igscraper --config …`) → `Pipeline` → `SeleniumBackend` → page objects and utilities.
+- **Entry point:** `slug-ig-crawler --config /path/to/config.toml`  → `Pipeline` → `SeleniumBackend` → page objects and utilities.
 - **Outputs:** JSONL and related files under configurable paths; when `push_to_gcs = 1`, batches can be uploaded and **enqueued** (`crawled_posts` / `crawled_comments`). See `scripts/postgres_setup.sql` for the DB schema.
 - **Operations note:** Job orchestrators (e.g. **Thor**) may generate configs from their own templates and run the same CLI inside Docker; this README does not replace Thor’s own docs.
 
@@ -102,7 +102,7 @@ These are the knobs people usually need first. Full TOML lives in **`config.exam
 
 ## Installation
 
-PyPI distribution name: **`slug-ig-crawler`** (Python import package: **`igscraper`**).
+PyPI distribution name and primary CLI command: **`slug-ig-crawler`** (Python import package remains **`igscraper`**).
 
 | Install | Command |
 |--------|---------|
@@ -112,7 +112,7 @@ PyPI distribution name: **`slug-ig-crawler`** (Python import package: **`igscrap
 | Video + JSON5 together | `pip install "slug-ig-crawler[all]"` |
 | Editable from this repo (dev + tests + extras) | `pip install -e ".[dev,video,json5]"` (same as `requirements.txt`) |
 
-After install, the **`igscraper`** console script is on your `PATH`. Dependencies are declared in **`pyproject.toml`** (the old fully pinned `requirements.txt` is replaced by that file plus the editable install line above).
+After install, the **`slug-ig-crawler`** console script is on your `PATH` (legacy alias `igscraper` is still provided for compatibility). Dependencies are declared in **`pyproject.toml`** (the old fully pinned `requirements.txt` is replaced by that file plus the editable install line above).
 
 ---
 
@@ -128,9 +128,9 @@ After install, the **`igscraper`** console script is on your `PATH`. Dependencie
 | 4 | `cp config.example.toml config.toml`. Set **`[data].cookie_file`**, **`[trace].thor_worker_id`** (any non-empty string, e.g. `local-dev`). Set **`push_to_gcs`** to `0` for a local-only trial without GCP. |
 | 5 | **Profile mode:** keep `[main].target_profiles` populated and ensure **`[data].urls_filepath`** is missing or points to a file that does **not** exist. **URL mode:** one URL per line in a file; set **`[data].urls_filepath`** to that real path. |
 | 6 | **Docker vs local:** `[main].use_docker = true` for Docker/Compose flows; `false` with `headless = false` for a visible local browser. See [Docker and Docker Compose](#docker-and-docker-compose). |
-| 7 | Run: `igscraper --config config.toml` (or `python -m igscraper --config config.toml`). |
+| 7 | Run: `slug-ig-crawler --config config.toml` . |
 
-**Debug in the IDE:** [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson). For **debugpy**, start **igscraper: CLI (listen for debugger)**, then **igscraper: Attach to debugpy** so execution continues past `debugpy.wait_for_client()`.
+**Debug in the IDE:** see [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson). For **debugpy**, start **slug-ig-crawler: CLI (listen for debugger)**, then **slug-ig-crawler: Attach to debugpy** so execution continues past `debugpy.wait_for_client()`.
 
 ---
 
@@ -216,7 +216,7 @@ At `Pipeline.run()`, the effective mode is chosen **after** config load (the `[m
 ### Config template and Thor
 
 - **This repo:** use `config.example.toml` as a starting point (copy to `config.toml` and edit). It includes a `[trace]` section required by `Pipeline`.
-- **Thor** does not read this README; it generates job configs from its own template (e.g. `thor/assets/base_config.toml`) and invokes Docker with `DOCKER_COMPOSE_FILE` pointing at **its** compose file. The **service name** `igscraper` and the usual entrypoint `igscraper --config /job/config.toml` or `python -m igscraper --config /job/config.toml` should stay compatible with that flow.
+- **Thor** does not read this README; it generates job configs from its own template (e.g. `thor/assets/base_config.toml`) and invokes Docker with `DOCKER_COMPOSE_FILE` pointing at **its** compose file. The **service name** `slug-ig-crawler` and the usual entrypoint `slug-ig-crawler --config /job/config.toml` should stay compatible with that flow.
 
 ---
 
@@ -235,8 +235,7 @@ The `cli.py` module serves as the **single entry point** for the application. It
 
 **Usage:**
 ```bash
-igscraper --config config.toml
-# or: python -m igscraper --config config.toml
+slug-ig-crawler --config config.toml
 ```
 
 **Arguments:**
@@ -257,7 +256,7 @@ Adjust the `--config` argument if your TOML file is not named `config.toml` or d
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "igscraper: CLI",
+      "name": "slug-ig-crawler: CLI",
       "type": "debugpy",
       "request": "launch",
       "module": "igscraper",
@@ -270,7 +269,7 @@ Adjust the `--config` argument if your TOML file is not named `config.toml` or d
       "justMyCode": false
     },
     {
-      "name": "igscraper: CLI (listen for debugger)",
+      "name": "slug-ig-crawler: CLI (listen for debugger)",
       "type": "debugpy",
       "request": "launch",
       "module": "igscraper",
@@ -284,7 +283,7 @@ Adjust the `--config` argument if your TOML file is not named `config.toml` or d
       "justMyCode": false
     },
     {
-      "name": "igscraper: Attach to debugpy",
+      "name": "slug-ig-crawler: Attach to debugpy",
       "type": "debugpy",
       "request": "attach",
       "connect": {
@@ -303,7 +302,7 @@ Adjust the `--config` argument if your TOML file is not named `config.toml` or d
 }
 ```
 
-**Optional attach flow:** `Pipeline` can call `debugpy.listen` when `DEBUG_ATTACH=1` (see `pipeline.py`). Start **igscraper: CLI (listen for debugger)** first, then start **igscraper: Attach to debugpy** so the process unblocks and you can hit breakpoints.
+**Optional attach flow:** `Pipeline` can call `debugpy.listen` when `DEBUG_ATTACH=1` (see `pipeline.py`). Start **slug-ig-crawler: CLI (listen for debugger)** first, then start **slug-ig-crawler: Attach to debugpy** so the process unblocks and you can hit breakpoints.
 
 ---
 
@@ -604,7 +603,7 @@ Standalone script for generating authentication cookies:
 
 ### High-Level Flow
 
-1. **CLI Invocation**: User runs `python -m igscraper.cli --config config.toml`
+1. **CLI Invocation**: User runs `slug-ig-crawler --config config.toml`
 2. **Configuration Loading**: `Pipeline` loads and validates TOML configuration
 3. **Browser Initialization**: `SeleniumBackend.start()` initializes Chrome WebDriver
 4. **Authentication**: Cookies are loaded and applied to browser session
@@ -742,7 +741,7 @@ sequenceDiagram
     participant Utils as utils.py
     participant Uploader as upload_enqueue.py
 
-    User->>CLI: python -m igscraper.cli --config config.toml
+    User->>CLI: slug-ig-crawler --config config.toml
     CLI->>Pipeline: Pipeline(config_path)
     Pipeline->>Config: load_config(config_path)
     Config-->>Pipeline: Config object
@@ -1060,11 +1059,11 @@ The project includes a `Dockerfile` that:
 
 ### Docker Compose
 
-The repository includes a **canonical** `docker-compose.yml` (service name **`igscraper`**, image built from this `Dockerfile`) for local and manual runs. **Thor and other orchestrators do not ship this file**; they use whatever path is in **`DOCKER_COMPOSE_FILE`** and typically run one-off jobs like:
+The repository includes a **canonical** `docker-compose.yml` (service name **`slug-ig-crawler`**, image built from this `Dockerfile`) for local and manual runs. **Thor and other orchestrators do not ship this file**; they use whatever path is in **`DOCKER_COMPOSE_FILE`** and typically run one-off jobs like:
 
 ```bash
-docker compose -f /path/to/compose.yml run --rm -v "$WORKSPACE:/job" igscraper \
-  python -m igscraper.cli --config /job/config.toml
+docker compose -f /path/to/compose.yml run --rm -v "$WORKSPACE:/job" slug-ig-crawler \
+  slug-ig-crawler --config /job/config.toml
 ```
 
 The compose file in this repo sets `PYTHONPATH`, `CHROME_BIN`, `CHROMEDRIVER_BIN`, and `shm_size: 2gb` to match the image. Optional host-specific variables (GCS credentials, etc.) can be passed with `-e` or via a local `.env` (see `.env.example`; use e.g. `docker compose --env-file .env …` if you add one).
@@ -1073,7 +1072,7 @@ The compose file in this repo sets `PYTHONPATH`, `CHROME_BIN`, `CHROMEDRIVER_BIN
 
 ```bash
 docker compose build
-docker compose run --rm igscraper python -m igscraper.cli --config config.toml
+docker compose run --rm slug-ig-crawler slug-ig-crawler --config config.toml
 ```
 
 **Prerequisites:**
@@ -1282,7 +1281,7 @@ Both timing events use the following structured schema (emitted as JSON):
 | `category`       | `creator_profile` OR `creator_content`          |
 | `creator_handle` | Instagram profile handle                        |
 | `content_id`     | Post/Reel ID or URL slug, or `null` for profile |
-| `pipeline`       | Fixed value: `"igscraper"`                      |
+| `pipeline`       | Fixed value: `"slug-ig-crawler"`                      |
 | `duration_ms`    | Integer milliseconds                            |
 | `status`         | `"success"` or `"error"`                        |
 | `error_type`     | Exception class name or `null`                  |
@@ -1304,8 +1303,8 @@ Both timing events use the following structured schema (emitted as JSON):
 
 **Example Log Entries:**
 ```json
-{"event": "pipeline_total_time", "category": "creator_profile", "creator_handle": "example_user", "content_id": null, "pipeline": "igscraper", "duration_ms": 125000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
-{"event": "pipeline_active_time", "category": "creator_profile", "creator_handle": "example_user", "content_id": null, "pipeline": "igscraper", "duration_ms": 95000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_total_time", "category": "creator_profile", "creator_handle": "example_user", "content_id": null, "pipeline": "slug-ig-crawler", "duration_ms": 125000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_active_time", "category": "creator_profile", "creator_handle": "example_user", "content_id": null, "pipeline": "slug-ig-crawler", "duration_ms": 95000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
 ```
 
 #### Post/Reel-Level Timing
@@ -1325,8 +1324,8 @@ Both timing events use the following structured schema (emitted as JSON):
 
 **Example Log Entries:**
 ```json
-{"event": "pipeline_total_time", "category": "creator_content", "creator_handle": "example_user", "content_id": "ABC123xyz", "pipeline": "igscraper", "duration_ms": 8500, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
-{"event": "pipeline_active_time", "category": "creator_content", "creator_handle": "example_user", "content_id": "ABC123xyz", "pipeline": "igscraper", "duration_ms": 6200, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_total_time", "category": "creator_content", "creator_handle": "example_user", "content_id": "ABC123xyz", "pipeline": "slug-ig-crawler", "duration_ms": 8500, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_active_time", "category": "creator_content", "creator_handle": "example_user", "content_id": "ABC123xyz", "pipeline": "slug-ig-crawler", "duration_ms": 6200, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
 ```
 
 ### Error Handling
@@ -1367,5 +1366,5 @@ grep "pipeline_.*_time.*creator_content" scraper_log_*.log | jq '{event, duratio
 
 ## Conclusion
 
-This documentation provides a comprehensive overview of the Instagram Profile Scraper architecture, components, and execution flow. The modular design supports maintainability and observability. Remember that this is an **open-source** project shared for **research and education**; any deployment must remain **consistent with Instagram / Meta policies**, applicable law, and the [acceptable use](#open-source-research-use-and-acceptable-use) section.
+This documentation provides a comprehensive overview of the slug-ig-crawler architecture, components, and execution flow. The modular design supports maintainability and observability. Remember that this is an **open-source** project shared for **research and education**; any deployment must remain **consistent with Instagram / Meta policies**, applicable law, and the [acceptable use](#open-source-research-use-and-acceptable-use) section.
 

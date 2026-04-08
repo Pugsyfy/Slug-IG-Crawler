@@ -1,5 +1,5 @@
 """
-Command-line interface for the Instagram Profile Scraper.
+Command-line interface for slug-ig-crawler.
 
 This script serves as the main entry point for running the scraper from the
 command line. It handles parsing command-line arguments and initiating the
@@ -29,7 +29,7 @@ def main():
     Arguments:
         --config (str): Required. Path to the configuration file (e.g., 'config.toml').
     """
-    parser = argparse.ArgumentParser(description='Instagram Profile Scraper')
+    parser = argparse.ArgumentParser(description='slug-ig-crawler')
     parser.add_argument('--config', required=True, help='Path to config file')
     args = parser.parse_args()
 

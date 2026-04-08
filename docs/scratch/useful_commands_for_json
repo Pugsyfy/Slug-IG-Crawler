@@ -1,0 +1,24 @@
+; # get unique keys at each level for whole json.
+jq -r '
+  paths
+  | map(select(type != "number"))   # drop array indexes
+  | join(".")
+' your.json | sort -u
+; example below
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.__typename
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.accessibility_caption
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.ad_id
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.affiliate_info
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.all_previous_submitters
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.audience
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.boost_unavailable_identifier
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.boost_unavailable_reason
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.boosted_status
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.can_reshare
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.can_see_insights_as_brand
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.can_viewer_reshare
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.caption
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.caption_is_edited
+; data.xdt_api__v1__feed__user_timeline_graphql_connection.edges.node.caption.cr
+
