@@ -123,7 +123,7 @@ After install, the **`Slug-Ig-Crawler`** console script is on your `PATH` (legac
 
 **Chrome / ChromeDriver (macOS and Linux):** `pip` does not download browsers. After `pip install "slug-ig-crawler[all]"` (or any install), run **`Slug-Ig-Crawler bootstrap`** once to fetch **stable** Chrome for Testing + matching ChromeDriver into **`~/.slug/browser/<platform>/`** and install a sample **`~/.slug/config.toml`** if missing. Until then, the first pipeline run prints a **stderr warning** suggesting bootstrap (silence with `IGSCRAPER_SILENT_BROWSER_CACHE_WARN=1`). Inspect templates with **`Slug-Ig-Crawler show-config`**.
 
-**Publishing to PyPI (maintainers):** see [docs/PYPI_RELEASE.md](docs/PYPI_RELEASE.md) (Trusted Publishing + release checklist; canonical org repo **Pugsyfy/Slug-IG-Crawler**).
+**Publishing to PyPI (maintainers):** see [docs/PYPI_RELEASE.md](docs/PYPI_RELEASE.md) (Trusted Publishing + release checklist; canonical org repo **Pugsyfy/Slug-IG-Crawler**). Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -155,6 +155,7 @@ After the quickstart, use the **Reference** table of contents above for:
 - **Docker** — compose layout and Chrome in containers.
 - **Operations** — timing logs, troubleshooting, dependencies, security notes.
 - **PyPI releases** — [docs/PYPI_RELEASE.md](docs/PYPI_RELEASE.md).
+- **Changelog** — [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
