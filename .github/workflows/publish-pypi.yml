@@ -1,6 +1,6 @@
 # Publish sdist + wheel to PyPI using OpenID Connect (Trusted Publishing).
 # Configure at https://pypi.org/manage/account/publishing/ for:
-#   Owner: Pugsy-Explores
+#   Owner: Pugsyfy
 #   Repository: Slug-IG-Crawler
 #   Workflow: publish-pypi.yml
 #   Environment: (leave empty unless you use a GitHub Environment named on PyPI)

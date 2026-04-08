@@ -2,7 +2,7 @@
 
 Canonical project links (PyPI metadata and this doc) use:
 
-**https://github.com/Pugsy-Explores/Slug-IG-Crawler**
+**https://github.com/Pugsyfy/Slug-IG-Crawler**
 
 Releases and Trusted Publishing must run from that repository (or your PyPI "pending publisher" must match the **exact** GitHub repo you use—see below).
 
@@ -22,7 +22,7 @@ Avoid long-lived API tokens on your laptop by letting GitHub Actions authenticat
 
 1. On **PyPI**: [Account settings → Publishing](https://pypi.org/manage/account/publishing/) → **Add a new pending publisher**.
 2. Choose **GitHub** as the provider and set:
-   - **Owner:** `Pugsy-Explores`
+   - **Owner:** `Pugsyfy`
    - **Repository name:** `Slug-IG-Crawler`
    - **Workflow name:** `publish-pypi.yml`
    - **Environment name:** leave **empty** (unless you configure a named environment on both PyPI and GitHub—see optional hardening below).
@@ -65,7 +65,7 @@ pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/
 
 ## Release steps (production)
 
-1. **Merge** your changes to the default branch on **`Pugsy-Explores/Slug-IG-Crawler`** (or ensure the release tag points at the commit you want).
+1. **Merge** your changes to the default branch on **`Pugsyfy/Slug-IG-Crawler`** (or ensure the release tag points at the commit you want).
 2. **Bump** `[project].version` in `pyproject.toml` if needed; commit and push.
 3. **Create a GitHub Release** (not just a tag) and publish it.  
    The workflow `.github/workflows/publish-pypi.yml` runs on `release: published` and uploads `dist/*` to PyPI.
@@ -114,4 +114,4 @@ python -c "import igscraper; print(igscraper.__version__)"
 
 ## Fork vs upstream
 
-If you develop on a fork but want PyPI metadata to stay **Pugsy-Explores**, keep `[project.urls]` as-is. **Trusted Publishing** must still be registered for the **repository that runs** `publish-pypi.yml` when you cut the release (usually the upstream org repo after you merge).
+If you develop on a fork but want PyPI metadata to stay **Pugsyfy**, keep `[project.urls]` as-is. **Trusted Publishing** must still be registered for the **repository that runs** `publish-pypi.yml` when you cut the release (usually the upstream org repo after you merge).
