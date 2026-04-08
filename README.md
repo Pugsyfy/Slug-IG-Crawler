@@ -261,8 +261,10 @@ The `cli.py` module serves as the **single entry point** for the application. It
 |--------|---------|
 | `run` (default) | Load config and run the pipeline. |
 | `bootstrap` | Download stable Chrome + ChromeDriver into `~/.slug/browser/…` and copy sample config to `~/.slug/config.toml` if absent (`--force` / `--force-config` available). |
-| `show-config` | Print the bundled sample TOML and whether `~/.slug/config.toml` exists. |
+| `show-config` | Print the bundled sample TOML plus discovered cache config/cookie paths. |
 | `save-cookie` | Open Instagram login flow and save JSON cookies to `~/.slug/cookies/<browserVersion>_<username>_<timestamp>.json` (also updates `~/.slug/cookies/latest.json`). |
+| `list-cookies` | Print only cached cookie JSON paths from `~/.slug/cookies`. |
+| `version` | Print installed package version. |
 
 **Key behavior:**
 
@@ -275,6 +277,8 @@ Slug-Ig-Crawler --config config.toml
 Slug-Ig-Crawler bootstrap
 Slug-Ig-Crawler show-config
 Slug-Ig-Crawler save-cookie --username your_instagram_username
+Slug-Ig-Crawler list-cookies
+Slug-Ig-Crawler version
 Slug-Ig-Crawler   # same as run; uses ~/.slug/config.toml when present
 ```
 

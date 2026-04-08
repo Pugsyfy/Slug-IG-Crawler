@@ -8,8 +8,10 @@ scraping pipeline.
 Commands:
   run (default)     Run the pipeline; ``--config`` optional if ``~/.slug/config.toml`` exists.
   bootstrap       Download stable Chrome + ChromeDriver into ``~/.slug`` and install sample config.
-  show-config     Print bundled sample TOML and whether ``~/.slug/config.toml`` exists.
+  show-config     Print bundled sample TOML plus cached config/cookie paths.
   save-cookie     Capture Instagram login cookies into ``~/.slug/cookies``.
+  list-cookies    Print only cached cookie JSON paths.
+  version         Print installed package version.
 """
 from __future__ import annotations
 
@@ -27,8 +29,14 @@ if _src.name == "src" and str(_src) not in sys.path:
 
 from igscraper.bootstrap import read_bundled_sample_config_text, run_bootstrap
 from igscraper.config import get_default_cached_config_path
+from igscraper import __version__
 from igscraper.login_Save_cookie import capture_login_cookies
-from igscraper.paths import get_cached_config_path, slug_cache_has_valid_browser_pair
+from igscraper.paths import (
+    get_cached_config_path,
+    get_cookie_cache_dir,
+    get_slug_cache_dir,
+    slug_cache_has_valid_browser_pair,
+)
 from igscraper.pipeline import Pipeline
 
 
@@ -99,10 +107,42 @@ def _cmd_show_config(_args: argparse.Namespace) -> None:
     print("=== Bundled sample config (config.example.toml) ===\n")
     print(read_bundled_sample_config_text().rstrip() + "\n")
     print("=== User cache ===\n")
+    print(f"  ~/.slug             : {get_slug_cache_dir()}")
     print(f"  ~/.slug/config.toml : {cached}")
     print(f"  exists: {cached.is_file()}")
     if cached.is_file():
         print(f"  resolved: {cached.resolve()}")
+    config_files = _list_cache_config_paths()
+    print(f"\n  cached config files ({len(config_files)}):")
+    for p in config_files:
+        print(f"    - {p}")
+
+    cookie_files = _list_cookie_paths()
+    print(f"\n  cached cookie files ({len(cookie_files)}):")
+    for p in cookie_files:
+        print(f"    - {p}")
+
+
+def _list_cache_config_paths() -> list[Path]:
+    """Return absolute paths to TOML files under ~/.slug."""
+    root = get_slug_cache_dir()
+    if not root.is_dir():
+        return []
+    return sorted(
+        [p.resolve() for p in root.glob("**/*.toml") if p.is_file()],
+        key=lambda p: str(p),
+    )
+
+
+def _list_cookie_paths() -> list[Path]:
+    """Return absolute paths to cookie JSON files under ~/.slug/cookies."""
+    cookie_dir = get_cookie_cache_dir()
+    if not cookie_dir.is_dir():
+        return []
+    return sorted(
+        [p.resolve() for p in cookie_dir.glob("*.json") if p.is_file()],
+        key=lambda p: str(p),
+    )
 
 
 def _cmd_save_cookie(args: argparse.Namespace) -> None:
@@ -115,10 +155,26 @@ def _cmd_save_cookie(args: argparse.Namespace) -> None:
     print(f"  Latest pointer:  {result.latest_path}")
 
 
+def _cmd_list_cookies(_args: argparse.Namespace) -> None:
+    for p in _list_cookie_paths():
+        print(str(p))
+
+
+def _cmd_version(_args: argparse.Namespace) -> None:
+    print(__version__)
+
+
 def main() -> None:
     argv = sys.argv[1:]
     # Subcommands when first token is a known command
-    if argv and argv[0] in ("run", "bootstrap", "show-config", "save-cookie"):
+    if argv and argv[0] in (
+        "run",
+        "bootstrap",
+        "show-config",
+        "save-cookie",
+        "list-cookies",
+        "version",
+    ):
         cmd = argv[0]
         rest = argv[1:]
     else:
@@ -156,6 +212,18 @@ def main() -> None:
         )
         args = p.parse_args(rest)
         _cmd_save_cookie(args)
+        return
+
+    if cmd == "list-cookies":
+        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
+        args = p.parse_args(rest)
+        _cmd_list_cookies(args)
+        return
+
+    if cmd == "version":
+        p = argparse.ArgumentParser(prog="Slug-Ig-Crawler", description="Slug-Ig-Crawler")
+        args = p.parse_args(rest)
+        _cmd_version(args)
         return
 
     # run

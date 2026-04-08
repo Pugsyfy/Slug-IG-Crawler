@@ -169,3 +169,32 @@ def test_cookie_filename_format():
 
     filename = _build_cookie_filename("143.0.7499.170", "user.name", 1700000000)
     assert filename == "143.0.7499.170_user.name_1700000000.json"
+
+
+def test_list_cache_config_paths(monkeypatch, tmp_path):
+    from igscraper import cli
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    root = tmp_path / ".slug"
+    (root / "config.toml").parent.mkdir(parents=True, exist_ok=True)
+    (root / "config.toml").write_text("[main]\nmode=1\n", encoding="utf-8")
+    (root / "nested").mkdir(parents=True, exist_ok=True)
+    (root / "nested" / "a.toml").write_text("x=1\n", encoding="utf-8")
+    paths = cli._list_cache_config_paths()
+    assert (root / "config.toml").resolve() in paths
+    assert (root / "nested" / "a.toml").resolve() in paths
+
+
+def test_list_cookie_paths(monkeypatch, tmp_path):
+    from igscraper import cli
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    cookie_dir = tmp_path / ".slug" / "cookies"
+    cookie_dir.mkdir(parents=True, exist_ok=True)
+    (cookie_dir / "latest.json").write_text("[]", encoding="utf-8")
+    (cookie_dir / "a.json").write_text("[]", encoding="utf-8")
+    (cookie_dir / "ignore.txt").write_text("x", encoding="utf-8")
+    paths = cli._list_cookie_paths()
+    assert (cookie_dir / "latest.json").resolve() in paths
+    assert (cookie_dir / "a.json").resolve() in paths
+    assert all(p.suffix == ".json" for p in paths)

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.22] - 2026-04-08
+
+### Added
+- CLI command `Slug-Ig-Crawler version` to print the installed package version.
+- CLI command `Slug-Ig-Crawler list-cookies` to print only cookie JSON paths from `~/.slug/cookies`.
+
+### Changed
+- `Slug-Ig-Crawler show-config` now also lists discovered TOML config files under the cache folder and cookie JSON files with absolute paths.
+- README command documentation updated to include `version`, `list-cookies`, and enhanced `show-config` behavior.
+
 ## [2.2.21] - 2026-04-08
 
 ### Added

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slug-ig-crawler"
-version = "2.2.21"
+version = "2.2.22"
 description = "Browser-based Instagram research tooling: Selenium scraper with optional GCS and PostgreSQL."
 readme = "README.md"
 license = "Apache-2.0"
