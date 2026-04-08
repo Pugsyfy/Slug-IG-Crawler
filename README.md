@@ -1,12 +1,12 @@
 # Slug-Ig-Crawler
 
-[![CI](https://github.com/Pugsyfy/Slug-IG-Crawler/actions/workflows/ci.yml/badge.svg)](https://github.com/Pugsyfy/Slug-IG-Crawler/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Pugsyfy/Slug-IG-Crawler/ci.yml?branch=main&label=CI)](https://github.com/Pugsyfy/Slug-IG-Crawler/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/Pugsyfy/Slug-IG-Crawler?style=social)](https://github.com/Pugsyfy/Slug-IG-Crawler/stargazers)
 [![PyPI version](https://img.shields.io/pypi/v/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
 [![Python versions](https://img.shields.io/pypi/pyversions/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
-[![License](https://img.shields.io/pypi/l/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
+[![License](https://img.shields.io/github/license/Pugsyfy/Slug-IG-Crawler)](https://github.com/Pugsyfy/Slug-IG-Crawler/blob/main/LICENSE)
 [![PyPI downloads](https://img.shields.io/pypi/dm/slug-ig-crawler.svg)](https://pypi.org/project/slug-ig-crawler/)
-[![Repo views](https://visitor-badge.laobi.icu/badge?page_id=Pugsyfy.Slug-IG-Crawler)](https://github.com/Pugsyfy/Slug-IG-Crawler)
+[![Repo views](https://visitor-badge.laobi.icu/badge?page_id=Pugsyfy.Slug-IG-Crawler&left_text=Repo%20views)](https://github.com/Pugsyfy/Slug-IG-Crawler)
 
 **What it is:** A Python tool that drives a real browser (Selenium) to collect **public** Instagram profile data, post metadata, comments, and media, with optional **Google Cloud Storage** uploads and **PostgreSQL** enqueue rows for downstream pipelines. Configuration is **TOML + Pydantic**; orchestration is **CLI → Pipeline → Selenium backend**.
 
