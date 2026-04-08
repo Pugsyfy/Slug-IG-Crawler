@@ -127,21 +127,182 @@ After install, the **`Slug-Ig-Crawler`** console script is on your `PATH` (legac
 
 ---
 
-## Quickstart (5-10 minutes)
+<a id="quickstart-5-10-minutes"></a>
 
-**Goal:** install dependencies, apply the Postgres schema, drop in a minimal `config.toml`, and run the CLI once.
+## 🚀 Quickstart (5–10 minutes)
 
-| Step | Action |
-|------|--------|
-| 1 | Create and activate a virtualenv: `python3 -m venv .venv && source .venv/bin/activate` (Windows: `.venv\Scripts\activate`). |
-| 2 | Install from PyPI: `pip install "slug-ig-crawler[all]"`. Then run **`Slug-Ig-Crawler bootstrap`** to cache stable Chrome + ChromeDriver, seed `~/.slug/config.toml`, and (by default) apply the bundled Postgres schema using **local defaults** (`localhost:5432`, database `postgres`; on **macOS Homebrew** the default DB user is your **login name**, elsewhere `postgres`; set `PUGSY_PG_PORT=5433` if your DB is on a Docker-mapped port). On success, **`~/.slug/.env`** is written with the effective `PUGSY_PG_*` values. |
-| 3 | **Postgres (required if you use enqueue):** ensure Postgres is reachable at those defaults, or set `PUGSY_PG_*` in your shell, a project `.env`, or edit `~/.slug/.env`. If you **do not** have `psql` yet, from a **git clone** run **`./scripts/install_postgres_local.sh`** (macOS Homebrew; Linux apt/dnf/yum; starts the Postgres service via `brew services` or `systemctl` when possible). You can also run `psql` manually: `psql "$YOUR_DATABASE_URL" -f scripts/postgres_setup.sql`. Use **`Slug-Ig-Crawler bootstrap --no-setup-postgres`** to skip schema setup. |
-| 4 | Run `Slug-Ig-Crawler save-cookie --username <instagram_username>` once, then set **`[data].cookie_file`** in `~/.slug/config.toml` (recommended: `~/.slug/cookies/latest.json`) and set **`[trace].thor_worker_id`** (any non-empty string, e.g. `local-dev`). Set **`push_to_gcs`** to `0` for a local-only trial without GCP. |
-| 5 | **Profile mode:** keep `[main].target_profiles` populated and ensure **`[data].urls_filepath`** is missing or points to a file that does **not** exist. **URL mode:** one URL per line in a file; set **`[data].urls_filepath`** to that real path. |
-| 6 | **Docker vs local:** `[main].use_docker = true` for Docker/Compose flows; `false` with `headless = false` for a visible local browser. See [Docker and Docker Compose](#docker-and-docker-compose). |
-| 7 | Run: `Slug-Ig-Crawler` (autoloads `~/.slug/config.toml`), or `Slug-Ig-Crawler --config /path/to/config.toml`. |
+Get the crawler running locally with a working browser, database, and config.
 
-**Debug in the IDE:** see [VS Code debugging (`launch.json`)](#vs-code-debugging-launchjson). For **debugpy**, start **Slug-Ig-Crawler: CLI (listen for debugger)**, then **Slug-Ig-Crawler: Attach to debugpy** so execution continues past `debugpy.wait_for_client()`.
+---
+
+## 1. Set up Python environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+```
+
+---
+
+## 2. Install + bootstrap
+
+```bash
+pip install "slug-ig-crawler[all]"
+Slug-Ig-Crawler bootstrap
+```
+
+This does the heavy lifting:
+
+* Downloads and caches **Chrome for Testing + ChromeDriver**
+* Creates `~/.slug/config.toml`
+* Applies the **Postgres schema** (default: `localhost:5432`, DB: `postgres`)
+* Writes resolved DB config to `~/.slug/.env`
+
+### Notes
+
+* macOS (Homebrew): DB user = your system username
+* Other systems: default user = `postgres`
+* Docker port mapping?
+
+  ```bash
+  export PUGSY_PG_PORT=5433
+  ```
+
+To skip DB setup:
+
+```bash
+Slug-Ig-Crawler bootstrap --no-setup-postgres
+```
+
+---
+
+## 3. Ensure Postgres is running
+
+If Postgres isn’t already available:
+
+```bash
+./scripts/install_postgres_local.sh
+```
+
+This will:
+
+* Install Postgres (brew / apt / yum)
+* Start the service
+
+### Manual setup (optional)
+
+```bash
+psql "$YOUR_DATABASE_URL" -f scripts/postgres_setup.sql
+```
+
+### Config override
+
+Set DB connection via:
+
+* environment variables (`PUGSY_PG_*`)
+* project `.env`
+* or `~/.slug/.env`
+
+---
+
+## 4. Authenticate (required)
+
+Run once:
+
+```bash
+Slug-Ig-Crawler save-cookie --username <instagram_username>
+```
+
+Then update `~/.slug/config.toml`:
+
+```toml
+[data]
+cookie_file = "~/.slug/cookies/latest.json"
+
+[trace]
+thor_worker_id = "local-dev"
+```
+
+For local testing (no GCP):
+
+```toml
+push_to_gcs = 0
+```
+
+---
+
+## 5. Choose input mode
+
+### Profile mode (default)
+
+* Set:
+
+  ```toml
+  [main]
+  target_profiles = ["username1", "username2"]
+  ```
+* Ensure `urls_filepath` is **not set** or points to a non-existent file
+
+---
+
+### URL mode
+
+* Create a file with one URL per line
+* Set:
+
+```toml
+[data]
+urls_filepath = "/absolute/path/to/urls.txt"
+```
+
+---
+
+## 6. Runtime mode
+
+### Local (recommended for dev)
+
+```toml
+[main]
+use_docker = false
+headless = false
+```
+
+### Docker / Compose
+
+```toml
+use_docker = true
+```
+
+---
+
+## 7. Run
+
+```bash
+Slug-Ig-Crawler
+```
+
+Or with explicit config:
+
+```bash
+Slug-Ig-Crawler --config /path/to/config.toml
+```
+
+---
+
+## ✅ What “working” looks like
+
+* Chrome launches (or headless runs)
+* Requests are captured
+* Data flows into Postgres
+* No navigation interruptions or crashes
+
+---
+
+## 🧠 Notes (from experience)
+
+* Run `save-cookie` **once at start only or if account changed**
+* If scraping fails → first check **cookies + DB connection**
+* If Chrome fails → re-run `bootstrap` (resets binaries cleanly)
 
 ---
 
