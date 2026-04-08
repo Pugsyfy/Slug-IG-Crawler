@@ -240,8 +240,7 @@ push_to_gcs = 0
   ```toml
   [main]
   target_profiles = [
-    { name = "username1", num_posts = 5 },
-    { name = "username2", num_posts = 5 },
+    { name = "jaat.aesthetics", num_posts = 5 },
   ]
   ```
 * Ensure `urls_filepath` is **not set** or points to a non-existent file
@@ -583,7 +582,7 @@ The configuration layer loads, validates, and processes settings from TOML files
 ```toml
 [main]
 mode = 1
-target_profiles = [{ name = "username", num_posts = 10 }]
+target_profiles = [{ name = "jaat.aesthetics", num_posts = 10 }]
 headless = false
 batch_size = 2
 fetch_comments = true
@@ -1116,8 +1115,7 @@ The application uses TOML configuration files with the following structure:
 [main]
 mode = 1  # May be overwritten at runtime; see "Runtime mode selection"
 target_profiles = [
-    { name = "username1", num_posts = 10 },
-    { name = "username2", num_posts = 5 }
+    { name = "jaat.aesthetics", num_posts = 10 },
 ]
 headless = false
 enable_screenshots = false  # Set to true to enable screenshot capture and video generation
@@ -1548,8 +1546,8 @@ Both timing events use the following structured schema (emitted as JSON):
 
 **Example Log Entries:**
 ```json
-{"event": "pipeline_total_time", "category": "creator_profile", "creator_handle": "example_user", "content_id": null, "pipeline": "Slug-Ig-Crawler", "duration_ms": 125000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
-{"event": "pipeline_active_time", "category": "creator_profile", "creator_handle": "example_user", "content_id": null, "pipeline": "Slug-Ig-Crawler", "duration_ms": 95000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_total_time", "category": "creator_profile", "creator_handle": "jaat.aesthetics", "content_id": null, "pipeline": "Slug-Ig-Crawler", "duration_ms": 125000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_active_time", "category": "creator_profile", "creator_handle": "jaat.aesthetics", "content_id": null, "pipeline": "Slug-Ig-Crawler", "duration_ms": 95000, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
 ```
 
 #### Post/Reel-Level Timing
@@ -1569,8 +1567,8 @@ Both timing events use the following structured schema (emitted as JSON):
 
 **Example Log Entries:**
 ```json
-{"event": "pipeline_total_time", "category": "creator_content", "creator_handle": "example_user", "content_id": "ABC123xyz", "pipeline": "Slug-Ig-Crawler", "duration_ms": 8500, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
-{"event": "pipeline_active_time", "category": "creator_content", "creator_handle": "example_user", "content_id": "ABC123xyz", "pipeline": "Slug-Ig-Crawler", "duration_ms": 6200, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_total_time", "category": "creator_content", "creator_handle": "jaat.aesthetics", "content_id": "ABC123xyz", "pipeline": "Slug-Ig-Crawler", "duration_ms": 8500, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
+{"event": "pipeline_active_time", "category": "creator_content", "creator_handle": "jaat.aesthetics", "content_id": "ABC123xyz", "pipeline": "Slug-Ig-Crawler", "duration_ms": 6200, "status": "success", "error_type": null, "consumer_id": "default_consumer"}
 ```
 
 ### Error Handling

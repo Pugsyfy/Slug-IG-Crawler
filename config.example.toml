@@ -9,7 +9,7 @@ mode = 1
 # else if target_profiles is non-empty → mode 1.
 
 target_profiles = [
-  { name = "example_user", num_posts = 5 },
+  { name = "jaat.aesthetics", num_posts = 5 },
 ]
 
 run_name_for_url_file = "url_file_run"

@@ -8,35 +8,8 @@ mode = 1
 # mode 1: Scrape from profiles.
 # A list of Instagram profiles to scrape. Each has a 'name' and 'num_posts'.
 target_profiles = [
-    { name = "paulinastein", num_posts = 30 },
-    { name = "csb", num_posts = 30 },
-    { name = "balibody", num_posts = 30 },
-    { name = "twobrokechicks", num_posts = 30 },
-    { name = "ayanasprowl", num_posts = 30 },
-    { name = "karinaxkara", num_posts = 30 },
-    { name = "josiemaran", num_posts = 30 },
-    { name = "hollyhoneyman", num_posts = 30 },
-    { name = "shreyasmendiratta", num_posts = 30 },
-    { name = "wander.da", num_posts = 30 },
-    { name = "newslaundry", num_posts = 30 },
-    { name = "foodpharmer", num_posts = 30 },
-    { name = "theliverdr", num_posts = 30 },
-    { name = "meghnads", num_posts = 30 },
-    { name = "doctor.mike", num_posts = 30 },
-    { name = "dr_cuterus", num_posts = 30 },
-    { name = "dj_shipley85", num_posts = 40 },
-    { name = "dryvonneburkart", num_posts = 40 },
-    { name = "drgabriellelyon", num_posts = 32 },
-    { name = "komalpandeyofficial", num_posts = 32 },
-    { name = "diipakhosla", num_posts = 32 },
-    { name = "sarahsaroshh", num_posts = 31 },
-    { name = "simrun.chopra", num_posts = 31 },
-    { name = "j7healthcentre", num_posts = 30 },
-    { name = "mrunu", num_posts = 30 },
-    { name = "zoella", num_posts = 34 },
-    { name = "pamela_rf", num_posts = 31 },
-    { name = "fitlifewith.em", num_posts = 30 }
- ]
+    { name = "jaat.aesthetics", num_posts = 5 },
+]
 # mode 2: Scrape from a list of URLs.
 run_name_for_url_file = "reel_support_test_24_1" # Used for output folder name in URL file mode
 

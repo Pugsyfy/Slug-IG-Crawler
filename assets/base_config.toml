@@ -10,7 +10,7 @@ mode = 1
 # _beauty_fashion
 target_profiles = [
 
-  { name = "memezar",           num_posts = 20 },
+  { name = "jaat.aesthetics", num_posts = 5 },
 
 ]
 
