@@ -57,11 +57,9 @@ This document is organized so you can **understand the repo, skim flags, and run
 
 ## Objectives & scope
 
-| In scope | Out of scope (by design) |
-|----------|---------------------------|
-| Research, education, and careful automation against **public** pages | A supported “Instagram API product” or official partnership |
-| **Transparency** in how data is collected (browser + captured requests) | High-volume production scraping, credential stuffing, or ToS violations |
-| **Traceability** via `thor_worker_id`, structured logs, optional DB rows | Hiding or bypassing platform protections |
+- Research, education, and careful automation against **public** pages.
+- **Transparency** in how data is collected (browser + captured requests).
+- **Traceability** via `thor_worker_id`, structured logs, and optional DB rows.
 
 **You** are responsible for compliance with [Instagram / Meta terms](https://help.instagram.com/581066165581870), applicable law, and your own risk tolerance.
 
