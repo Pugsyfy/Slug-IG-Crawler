@@ -1,0 +1,80 @@
+# Example / template for igscraper. Copy to `config.toml` and edit.
+# Thor generates job configs from its own template (e.g. thor/assets/base_config.toml),
+# not from this file — this is for humans and manual Docker runs.
+
+[main]
+mode = 1
+# Runtime overwrites [main].mode: if [data].urls_filepath is set and the file exists → mode 2;
+# else if target_profiles is non-empty → mode 1.
+
+target_profiles = [
+  { name = "example_user", num_posts = 5 },
+]
+
+run_name_for_url_file = "url_file_run"
+
+fetch_comments = true
+fetch_replies = false
+comment_no_new_retries = 3
+
+headless = true
+enable_screenshots = false
+use_docker = true
+
+rate_limit_seconds_min = 2
+rate_limit_seconds_max = 4
+max_retries = 3
+batch_size = 2
+randomize_batch = false
+page_scroll_retries = 2
+human_mouse_move_duration = 0.5
+save_every = 2
+comments_scroll_retries = 1
+comment_scroll_steps = 3
+
+scrape_using_captured_requests = true
+gcs_bucket_name = "your-gcs-bucket"
+consumer_id = "default_consumer"
+
+# When CHROME_BIN / CHROMEDRIVER_BIN are unset: local dev uses these, then built-in defaults; Docker uses image paths.
+# chrome_binary_path = "/path/to/chrome"
+# chromedriver_binary_path = "/path/to/chromedriver"
+
+[data]
+output_dir = "outputs"
+urls_filepath = "urls_to_scrape.txt"
+
+shot_dir = "{output_dir}/{date}/screens"
+posts_path = "{output_dir}/{date}/{target_profile}/posts_{target_profile}_{datetime}.txt"
+post_entity_path = "{output_dir}/{date}/{target_profile}/post_entity_{target_profile}_{datetime}.jsonl"
+profile_path = "{output_dir}/{date}/{target_profile}/profile_data_{target_profile}_{datetime}.jsonl"
+metadata_path = "{output_dir}/{date}/{target_profile}/metadata_{target_profile}.jsonl"
+skipped_path = "{output_dir}/{date}/{target_profile}/skipped_{target_profile}_{datetime}.txt"
+tmp_path = "{output_dir}/{date}/{target_profile}/scrape_results_tmp_{target_profile}_{datetime}.jsonl"
+media_path = "{output_dir}/{date}/{target_profile}/media_{target_profile}"
+schema_path = "src/igscraper/flatten_schema.yaml"
+models_path = "{output_dir}/{date}/{target_profile}/models_{target_profile}_{datetime}.jsonl"
+extracted_data_path = "{output_dir}/{date}/{target_profile}/exdata_{target_profile}_{datetime}.jsonl"
+graphql_keys_path = "{output_dir}/{date}/{target_profile}/graphql_keys_{target_profile}_{datetime}.jsonl"
+post_page_data_key = [
+  "xdt_api__v1__media__media_id__comments__connection",
+  "xdt_api__v1__media__media_id__comments__parent_comment_id__child_comments__connection",
+]
+profile_page_data_key = ["xdt_api__v1__feed__user_timeline_graphql_connection"]
+cookie_file = "path/to/cookies.json"
+
+[logging]
+level = "INFO"
+log_dir = "outputs/logs"
+log_format = "%(asctime)s [%(levelname)s/%(processName)s] %(name)s: %(message)s"
+date_format = "%Y-%m-%d %H:%M:%S"
+
+[celery]
+broker_url = "redis://localhost:6379/0"
+result_backend = "redis://localhost:6379/0"
+log_format = "%(asctime)s [%(levelname)s/%(processName)s] %(name)s: %(message)s"
+date_format = "%Y-%m-%d %H:%M:%S"
+
+# Required for Pipeline runs: non-empty string (orchestrators usually inject this).
+[trace]
+thor_worker_id = "local-dev-or-job-id"

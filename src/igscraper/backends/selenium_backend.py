@@ -83,6 +83,17 @@ import subprocess
 
 logger = get_logger(__name__)
 
+# Default local (macOS) paths when env and optional config omit binaries.
+_DEFAULT_LOCAL_CHROME_BIN = (
+    "/Users/shang/my_work/ig_profile_scraper/"
+    "chrome-mac-arm64/"
+    "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+)
+_DEFAULT_LOCAL_CHROMEDRIVER_BIN = "/opt/homebrew/bin/chromedriver"
+# Dockerfile ENV defaults when use_docker=true and CHROME_* env not set.
+_DOCKER_CHROME_BIN = "/opt/chrome-linux64/chrome"
+_DOCKER_CHROMEDRIVER_BIN = "/opt/chromedriver-linux64/chromedriver"
+
 
 # ⚠️ Suspicious navigation: chrome://new-tab-page/ patch it too
 def assert_chrome_versions_match(chrome_bin: str, chromedriver_bin: str):
@@ -153,6 +164,45 @@ class SeleniumBackend(Backend):
             r"(comment).*?(?:\$\$pk|\$\$id|_pk|_id|\.pk|\.id)$",
             re.IGNORECASE,
         )
+
+    def _resolve_browser_binaries(self) -> tuple[str, str]:
+        """
+        Chrome + ChromeDriver paths. CHROME_BIN and CHROMEDRIVER_BIN always win when set.
+
+        If unset: Docker uses image paths; local uses optional main.chrome_binary_path /
+        main.chromedriver_binary_path then built-in macOS defaults.
+        """
+        m = self.config.main
+
+        def _strip_or_none(val: Optional[str]) -> Optional[str]:
+            if val is None:
+                return None
+            t = val.strip()
+            return t or None
+
+        chrome = os.environ.get("CHROME_BIN")
+        driver = os.environ.get("CHROMEDRIVER_BIN")
+
+        if self.config.main.use_docker:
+            chrome = chrome or _DOCKER_CHROME_BIN
+            driver = driver or _DOCKER_CHROMEDRIVER_BIN
+        else:
+            chrome = (
+                chrome
+                or _strip_or_none(getattr(m, "chrome_binary_path", None))
+                or _DEFAULT_LOCAL_CHROME_BIN
+            )
+            driver = (
+                driver
+                or _strip_or_none(getattr(m, "chromedriver_binary_path", None))
+                or _DEFAULT_LOCAL_CHROMEDRIVER_BIN
+            )
+
+        logger.info(
+            "Browser binaries (CHROME_BIN/CHROMEDRIVER_BIN override when set): "
+            f"chrome={chrome!r}, chromedriver={driver!r}"
+        )
+        return chrome, driver
 
     # def startOg(self):
     #     """
@@ -263,11 +313,9 @@ class SeleniumBackend(Backend):
 
 
         # --------------------------------------------------
-        # Environment-specific paths
+        # Environment-specific paths (CHROME_BIN / CHROMEDRIVER_BIN respected in all modes)
         # --------------------------------------------------
         if self.config.main.use_docker:
-            chrome_bin = os.environ["CHROME_BIN"]
-            chromedriver_bin = os.environ["CHROMEDRIVER_BIN"]
             profile_dir = os.getenv("IGSCRAPER_CHROME_PROFILE","/tmp/chrome-profile")
             platform = "Linux x86_64"
 
@@ -276,16 +324,12 @@ class SeleniumBackend(Backend):
             options.add_argument("--disable-gpu")
 
         else:
-            chrome_bin = (
-                "/Users/shang/my_work/ig_profile_scraper/"
-                "chrome-mac-arm64/"
-                "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
-            )
-            chromedriver_bin = "/opt/homebrew/bin/chromedriver"
             profile_dir = os.getenv("IGSCRAPER_CHROME_PROFILE", "/tmp/chrome-profile")
             platform = "Linux x86_64"  # intentionally Linux-like
 
             options.add_argument("--remote-debugging-pipe")
+
+        chrome_bin, chromedriver_bin = self._resolve_browser_binaries()
 
         # --------------------------------------------------
         # Append worker_id and random suffix to profile path

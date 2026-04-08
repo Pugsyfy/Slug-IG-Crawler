@@ -28,14 +28,12 @@ def main():
 
     Arguments:
         --config (str): Required. Path to the configuration file (e.g., 'config.toml').
-        --dry-run (bool): Optional. If present, runs the pipeline in a test mode.
     """
     parser = argparse.ArgumentParser(description='Instagram Profile Scraper')
     parser.add_argument('--config', required=True, help='Path to config file')
-    parser.add_argument('--dry-run', action='store_true', help='Test without downloading')
     args = parser.parse_args()
 
-    pipeline = Pipeline(config_path=args.config, dry_run=args.dry_run)
+    pipeline = Pipeline(config_path=args.config)
     pipeline.run()
 
 if __name__ == '__main__':

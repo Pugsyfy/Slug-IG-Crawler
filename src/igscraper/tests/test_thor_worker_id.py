@@ -317,7 +317,7 @@ class TestPipelineInitialization(unittest.TestCase):
         mock_backend_class.return_value = mock_backend_instance
         mock_registry.return_value = MagicMock()
         
-        pipeline = Pipeline(str(self.config_path), dry_run=True)
+        pipeline = Pipeline(str(self.config_path))
         
         # Verify thor_worker_id is stored
         self.assertEqual(pipeline.thor_worker_id, "worker-pipeline-789")
@@ -492,7 +492,7 @@ class TestLoggingThorWorkerId(unittest.TestCase):
         mock_backend_class.return_value = mock_backend_instance
         mock_registry.return_value = MagicMock()
         
-        pipeline = Pipeline(str(self.config_path), dry_run=True)
+        pipeline = Pipeline(str(self.config_path))
         
         # Call _emit_timing_log
         pipeline._emit_timing_log(

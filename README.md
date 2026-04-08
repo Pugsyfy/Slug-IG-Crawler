@@ -4,6 +4,19 @@
 
 The Instagram Profile Scraper is a Python-based web scraping application that collects public Instagram profile data, post metadata, comments, and media using Selenium WebDriver. The application is designed with a modular architecture that separates concerns into distinct layers: CLI interface, configuration management, pipeline orchestration, browser automation, and data persistence.
 
+### Runtime mode selection
+
+At `Pipeline.run()`, the effective mode is chosen **after** config load (the `[main].mode` value in TOML may be overwritten):
+
+1. **URL file mode (mode 2)** — if `[data].urls_filepath` is set **and** that path exists on disk.
+2. **Profile mode (mode 1)** — else if `[main].target_profiles` is non-empty.
+3. Otherwise the run logs a warning and does nothing.
+
+### Config template and Thor
+
+- **This repo:** use `config.example.toml` as a starting point (copy to `config.toml` and edit). It includes a `[trace]` section required by `Pipeline`.
+- **Thor** does not read this README; it generates job configs from its own template (e.g. `thor/assets/base_config.toml`) and invokes Docker with `DOCKER_COMPOSE_FILE` pointing at **its** compose file. The **service name** `igscraper` and the usual entrypoint `python -m igscraper.cli --config /job/config.toml` should stay compatible with that flow.
+
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
@@ -75,19 +88,17 @@ The `cli.py` module serves as the **single entry point** for the application. It
 **Key Functions:**
 
 - `main()`: Entry point that:
-  - Parses command-line arguments (`--config`, `--dry-run`)
+  - Parses command-line arguments (`--config`)
   - Instantiates the `Pipeline` class with the configuration path
   - Invokes `pipeline.run()` to start the scraping process
 
 **Usage:**
 ```bash
 python -m igscraper.cli --config config.toml
-python -m igscraper.cli --config config.toml --dry-run
 ```
 
 **Arguments:**
 - `--config` (required): Path to the TOML configuration file
-- `--dry-run` (optional): Runs the pipeline in test mode without actual scraping
 
 ---
 
@@ -141,14 +152,15 @@ The `Pipeline` class orchestrates the entire scraping workflow, managing the bro
 
 **Key Methods:**
 
-- **`__init__(config_path: str, dry_run: bool)`**:
+- **`__init__(config_path: str)`**:
   - Loads master configuration
+  - Validates `[trace].thor_worker_id` (required for `Pipeline`)
   - Initializes `SeleniumBackend`
   - Creates `GraphQLModelRegistry` for parsing network responses
 
 - **`run() -> dict`**:
   - Starts the browser via `backend.start()`
-  - Determines scraping mode (profile list or URL file)
+  - Determines scraping mode (URL file if `data.urls_filepath` exists, else profile list; see [Runtime mode selection](#runtime-mode-selection))
   - Iterates through target profiles, calling `_scrape_single_profile()` for each
   - Ensures browser cleanup in `finally` block
 
@@ -174,8 +186,9 @@ The `SeleniumBackend` class implements the `Backend` abstract interface, managin
 - **`start()`**:
   - Configures Chrome options (anti-detection, performance logging)
   - Environment-aware initialization:
-    - If `use_docker=True`: Uses Docker environment variables (`CHROME_BIN`, `CHROMEDRIVER_BIN`) and Docker-specific flags (`--no-sandbox`, `--disable-dev-shm-usage`)
-    - Otherwise: Uses local Chrome/ChromeDriver paths for macOS
+    - **Always:** if `CHROME_BIN` / `CHROMEDRIVER_BIN` are set, those paths are used.
+    - If `use_docker=True`: otherwise falls back to the image’s pinned Linux paths; adds Docker-specific flags (`--no-sandbox`, `--disable-dev-shm-usage`, …)
+    - If `use_docker=False`: otherwise **optional `[main].chrome_binary_path` / `[main].chromedriver_binary_path` → built-in macOS defaults**
   - Validates Chrome and ChromeDriver version compatibility
   - Initializes Chrome WebDriver with appropriate binary locations
   - Patches driver with `patch_driver()` for security monitoring
@@ -407,10 +420,10 @@ Standalone script for generating authentication cookies:
 
 1. **CLI (`cli.py`)**
    - `main()` parses `--config` argument
-   - Instantiates `Pipeline(config_path, dry_run)`
+   - Instantiates `Pipeline(config_path)`
 
 2. **Pipeline (`pipeline.py`)**
-   - `__init__()` calls `load_config(config_path)`
+   - `__init__()` calls `load_config(config_path)` and validates `[trace].thor_worker_id`
    - Creates `SeleniumBackend(self.master_config)`
    - Initializes `GraphQLModelRegistry` with model registry and schema path
 
@@ -422,7 +435,7 @@ Standalone script for generating authentication cookies:
 4. **Backend Initialization (`selenium_backend.py`)**
    - `Pipeline.run()` calls `backend.start()`
    - Chrome options configured (headless, anti-detection, performance logging)
-   - WebDriver instantiated via `ChromeDriverManager`
+   - WebDriver binaries resolved with env overrides, then Docker image paths or local config/defaults
    - Driver patched with `patch_driver()` for security monitoring
    - Network tracking enabled via CDP commands
    - `_login_with_cookies()` loads and applies authentication cookies
@@ -525,7 +538,7 @@ sequenceDiagram
     participant Uploader as upload_enqueue.py
 
     User->>CLI: python -m igscraper.cli --config config.toml
-    CLI->>Pipeline: Pipeline(config_path, dry_run)
+    CLI->>Pipeline: Pipeline(config_path)
     Pipeline->>Config: load_config(config_path)
     Config-->>Pipeline: Config object
     Pipeline->>Backend: SeleniumBackend(config)
@@ -642,13 +655,17 @@ sequenceDiagram
 
 ## Configuration
 
+### Trace (`[trace]`)
+
+`Pipeline` requires a non-empty **`[trace].thor_worker_id`** in the config file used for a full run. It is used for structured logs, enqueue metadata, and Chrome profile suffixing. Orchestrators typically inject a job-specific id.
+
 ### Configuration File Structure
 
 The application uses TOML configuration files with the following structure:
 
 ```toml
 [main]
-mode = 1  # 1 = profile mode, 2 = URL file mode
+mode = 1  # May be overwritten at runtime; see "Runtime mode selection"
 target_profiles = [
     { name = "username1", num_posts = 10 },
     { name = "username2", num_posts = 5 }
@@ -692,7 +709,12 @@ date_format = "%Y-%m-%d %H:%M:%S"
 [celery]
 broker_url = "redis://localhost:6379/0"
 result_backend = "redis://localhost:6379/0"
+
+[trace]
+thor_worker_id = "your-worker-or-job-id"
 ```
+
+A full sanitized template is **`config.example.toml`** in the repository root.
 
 ### Path Placeholders
 
@@ -765,7 +787,7 @@ use_docker = true  # Set to true when running in Docker
 ```
 
 When `use_docker=True`, the backend:
-- Uses environment variables `CHROME_BIN` and `CHROMEDRIVER_BIN` for browser binaries
+- Uses `CHROME_BIN` / `CHROMEDRIVER_BIN` when set; otherwise the same pinned paths as the `Dockerfile` (`/opt/chrome-linux64/chrome`, `/opt/chromedriver-linux64/chromedriver`)
 - Applies Docker-specific Chrome flags: `--no-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`
 - Uses `/tmp/chrome-profile` as the Chrome user data directory (can be overridden via `IGSCRAPER_CHROME_PROFILE` env var)
 - Configures platform identity as "Linux x86_64"
@@ -787,52 +809,30 @@ The project includes a `Dockerfile` that:
 
 ### Docker Compose
 
-The project includes a `docker-compose.yml` file that orchestrates the scraper service:
-
-**Service Configuration:**
-- **Image**: Built from the local Dockerfile
-- **Platform**: `linux/amd64`
-- **Volumes**:
-  - Project root mounted to `/app` for code access
-  - GCS service account key mounted as read-only
-  - Chrome profile directory mounted for persistent browser state
-  - Output directory mounted for data persistence
-  - Config file mounted as read-only
-- **Environment Variables**:
-  - `use_docker=true` - Enables Docker mode
-  - `PYTHONPATH=/app/src` - Sets Python path
-  - `CHROME_BIN` and `CHROMEDRIVER_BIN` - Chrome binary paths
-  - `GOOGLE_APPLICATION_CREDENTIALS` - GCS credentials path
-  - Database connection settings
-- **Resource Limits**: 4GB memory limit, 2GB reservation, 2GB shared memory
-- **Network**: Extra hosts configured for Docker-internal networking
-
-**Usage:**
+The repository includes a **canonical** `docker-compose.yml` (service name **`igscraper`**, image built from this `Dockerfile`) for local and manual runs. **Thor and other orchestrators do not ship this file**; they use whatever path is in **`DOCKER_COMPOSE_FILE`** and typically run one-off jobs like:
 
 ```bash
-# Build and run with Docker Compose
-docker-compose up --build
+docker compose -f /path/to/compose.yml run --rm -v "$WORKSPACE:/job" igscraper \
+  python -m igscraper.cli --config /job/config.toml
+```
 
-# Run in detached mode
-docker-compose up -d
+The compose file in this repo sets `PYTHONPATH`, `CHROME_BIN`, `CHROMEDRIVER_BIN`, and `shm_size: 2gb` to match the image. Optional host-specific variables (GCS credentials, etc.) can be passed with `-e` or via a local `.env` (see `.env.example`; use e.g. `docker compose --env-file .env …` if you add one).
 
-# View logs
-docker-compose logs -f
+**Usage (examples):**
 
-# Stop services
-docker-compose down
+```bash
+docker compose build
+docker compose run --rm igscraper python -m igscraper.cli --config config.toml
 ```
 
 **Prerequisites:**
 - Docker and Docker Compose installed
-- GCS service account JSON file at `./secrets/gcs-sa.json`
-- Valid `config.toml` file with `use_docker = true`
+- Valid `config.toml` with `use_docker = true` for in-container runs
+- For GCS upload from the container, mount credentials and set `GOOGLE_APPLICATION_CREDENTIALS` as appropriate
 
 **Important Notes:**
 - The Chrome profile directory defaults to `/tmp/chrome-profile` (RAM-mounted on remote servers) and is automatically created if it doesn't exist. Can be overridden via `IGSCRAPER_CHROME_PROFILE` environment variable.
-- The config file is mounted read-only to prevent accidental modifications
-- Shared memory size (2GB) is increased to prevent Chrome crashes in containerized environments
-- Debug port 5678 is exposed (for development only, should be removed in production)
+- Shared memory size (`shm_size`) in compose is set to reduce Chrome crashes in containers
 
 ---
 
@@ -936,7 +936,6 @@ Key external dependencies:
 - **selenium**: WebDriver automation
 - **seleniumwire**: Network request interception
 - **pydantic**: Configuration validation
-- **webdriver-manager**: Automatic ChromeDriver management
 - **google-cloud-storage**: GCS upload functionality
 - **psycopg2**: PostgreSQL database connectivity
 - **imageio** and **imageio-ffmpeg**: Video generation from screenshots
@@ -958,8 +957,7 @@ Key external dependencies:
 ### Common Issues
 
 1. **ChromeDriver not found**: 
-   - Local: Ensure Chrome browser is installed; the code uses hardcoded paths for macOS
-   - Docker: Ensure `CHROME_BIN` and `CHROMEDRIVER_BIN` environment variables are set correctly
+   - Set `CHROME_BIN` and `CHROMEDRIVER_BIN` to override in any mode; otherwise local runs use optional TOML paths or macOS defaults, Docker runs use the image’s pinned paths
 2. **Version mismatch**: Chrome and ChromeDriver major versions must match. The Dockerfile validates this automatically.
 3. **Cookie authentication fails**: Regenerate cookies using `login_Save_cookie.py`. In Docker, ensure cookies are in the mounted Chrome profile directory.
 4. **Rate limiting**: Increase `rate_limit_seconds_min` and `rate_limit_seconds_max` in config
@@ -973,7 +971,7 @@ Key external dependencies:
 
 - Set `headless = false` to observe browser behavior
 - Set `logging.level = "DEBUG"` for verbose logging
-- Use `--dry-run` flag to test configuration without scraping
+- Validate TOML (including `[trace].thor_worker_id`) against `config.example.toml` before long runs
 
 ---
 
@@ -1037,6 +1035,7 @@ Both timing events use the following structured schema (emitted as JSON):
 | `status`         | `"success"` or `"error"`                        |
 | `error_type`     | Exception class name or `null`                  |
 | `consumer_id`    | Consumer ID from config (or `null` if not set) |
+| `thor_worker_id` | Value from `[trace].thor_worker_id` in config |
 
 ### Timing Levels
 

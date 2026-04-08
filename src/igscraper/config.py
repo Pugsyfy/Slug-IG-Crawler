@@ -57,6 +57,10 @@ class MainConfig(BaseSettings):
     headless: bool = True
     enable_screenshots: bool = False
     use_docker: bool = False
+    # Optional paths when env vars are unset (see selenium_backend). Precedence is always:
+    # CHROME_BIN / CHROMEDRIVER_BIN env → (if local) these fields → local defaults; (if Docker) image paths.
+    chrome_binary_path: Optional[str] = None
+    chromedriver_binary_path: Optional[str] = None
     # Minimum random delay (in seconds) between batches of requests.
     rate_limit_seconds_min: int = 2
     # Maximum random delay (in seconds) between batches of requests.

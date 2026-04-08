@@ -41,17 +41,15 @@ class Pipeline:
     lifecycle, and iterates through target profiles to scrape them sequentially.
     """
 
-    def __init__(self, config_path: str, dry_run: bool = False):
+    def __init__(self, config_path: str):
         """
         Initializes the Pipeline.
 
         Args:
             config_path: The file path to the TOML configuration file.
-            dry_run: A boolean flag for test runs (not currently implemented).
         """
         self.master_config = load_config(config_path)  # Keep this pristine
         self.config = None
-        self.dry_run = dry_run
         
         # Validate [trace].thor_worker_id here (not at config load time)
         # This allows celery_app to load config without trace section
@@ -414,7 +412,7 @@ class Pipeline:
         }
         logger.info(json.dumps(log_entry, ensure_ascii=False))
 
-def run_pipeline(config_path: str, dry_run: bool = False):
+def run_pipeline(config_path: str):
     """Legacy function wrapper to instantiate and run the Pipeline class."""
-    pipeline = Pipeline(config_path, dry_run)
+    pipeline = Pipeline(config_path)
     return pipeline.run()

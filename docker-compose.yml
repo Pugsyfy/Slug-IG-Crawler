@@ -1,43 +1,18 @@
-version: "3.9"
+# Canonical compose for local/manual runs. Orchestrators (e.g. Thor) use their own
+# `docker compose -f …` path via DOCKER_COMPOSE_FILE; they typically run:
+#   docker compose run --rm -v <workspace>:/job igscraper \
+#     python -m igscraper.cli --config /job/config.toml
+#
+# Service name `igscraper` should stay aligned with integration defaults.
+# Optional: `cp .env.example .env` and use `docker compose --env-file .env ...` for extra vars.
 
 services:
   igscraper:
-    image: igscraper:${IMAGE_TAG:-latest}
-    platform: linux/amd64
     build: .
-    
-    # container_name: igscraper
-    # restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-      - "hub.docker.internal:host-gateway"
-    # volumes:
-    #   - ./:/app
-    #   - ./secrets/gcs-sa.json:/var/secrets/sa.json:ro
-    #   - ./tmp/chrome-profile:/tmp/chrome-profile
-    #   - ./outputs:/opt/pugsy/outputs
-    #   - ./config.toml:/app/config.toml:ro
-    #   - ./src/igscraper/cookies/cookies_chromium_linuxish_emmaCooking_1767731862.json:/cookies/cookies_chromium_linuxish_emmaCooking_1767731862.json:ro
-    volumes:
-      - ${IGSCRAPER_APP_ROOT}:/app
-      - ${IGSCRAPER_SECRETS}/gcs-sa.json:/var/secrets/sa.json:ro
-      - ${IGSCRAPER_CHROME_PROFILE}:/tmp/chrome-profile
-      - ${IGSCRAPER_COOKIES}/cookies_chromium_linuxish_emmaCooking_1767731862.json:/cookies/cookies_chromium_linuxish_emmaCooking_1767731862.json:ro
-    tmpfs:
-      - /tmp:size=1g,mode=1777
-    environment:
-      # - DEBUG_ATTACH=1
-      - use_docker=true
-      - PYTHONPATH=/app/src
-      - ENV=development
-      - PUGSY_PG_HOST=hub.docker.internal
-      - GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/sa.json
-      - CHROME_BIN=/opt/chrome-linux64/chrome
-      - CHROMEDRIVER_BIN=/opt/chromedriver-linux64/chromedriver
+    image: igscraper:local
     shm_size: 2gb
-
-    mem_limit: 4g
-    mem_reservation: 2g
-    ports: # only for testing purpose, remove in prod
-      - "5678:5678"
-
+    environment:
+      PYTHONPATH: /app/src
+      CHROME_BIN: /opt/chrome-linux64/chrome
+      CHROMEDRIVER_BIN: /opt/chromedriver-linux64/chromedriver
+    working_dir: /app
